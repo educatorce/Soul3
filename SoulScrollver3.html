@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Melodic Feed</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Billabong&display=swap');
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            margin: 0;
+            background: #121212;
+            color: #e0e0e0;
+        }
+
+        .header {
+            background: #1f1f1f;
+            padding: 15px 20px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-bottom: 1px solid #333;
+        }
+
+        .header h1 {
+            font-family: 'Billabong', cursive;
+            font-size: 32px;
+            color: #e0e0e0;
+        }
+
+        .feed {
+            max-width: 600px;
+            margin: 20px auto;
+            padding: 0;
+        }
+
+        .post {
+            background: #1e1e1e;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 0 1px rgba(0, 0, 0, 0.5);
+            border: 1px solid #333;
+        }
+
+        .post-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #3a3a3a;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 10px;
+        }
+
+        .post-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #444;
+        }
+
+        .action-btn {
+            flex: 1;
+            padding: 8px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            color: #b3b3b3;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .action-btn:hover {
+            background: #333;
+            border-radius: 4px;
+        }
+
+        .action-btn.liked {
+            color: #ed4956;
+        }
+
+        .skeleton-post {
+            background: #1e1e1e;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            height: 150px;
+            animation: pulse 1.5s infinite;
+            border: 1px solid #333;
+        }
+
+        @keyframes pulse {
+            0% {
+                opacity: 0.6;
+            }
+            50% {
+                opacity: 1;
+            }
+            100% {
+                opacity: 0.6;
+            }
+        }
+
+        .audio-panel {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #1f1f1f;
+            padding: 15px;
+            border-radius: 50px;
+            box-shadow: 0 1px 5px rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        #audio-toggle {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #e0e0e0;
+            font-size: 16px;
+        }
+
+        #volume-slider {
+            flex: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🎵 MeloFeed</h1>
+    </div>
+    
+    <div class="feed" role="feed" aria-live="polite">
+        <div id="posts-container"></div>
+        <div id="sentinel"></div>
+    </div>
+    
+    <div class="audio-panel">
+        <button id="audio-toggle">🔊 Sound On</button>
+        <input type="range" id="volume-slider" min="0" max="100" value="50">
+    </div>
+
+    <script>
+        // Global variables
+        let audioContext = null;
+        let masterGain = null;
+        let isAudioEnabled = true;
+        let postId = 0;
+        let isLoading = false;
+        
+        // Initialize audio on first user interaction
+        function initAudio() {
+            if (!audioContext) {
+                try {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    masterGain = audioContext.createGain();
+                    masterGain.connect(audioContext.destination);
+                    masterGain.gain.value = 0.5;
+                    console.log('Audio initialized');
+                } catch (e) {
+                    console.error('Audio init failed:', e);
+                }
+            }
+        }
+        
+        // Play a note
+        function playNote() {
+            if (!isAudioEnabled || !audioContext) return;
+            
+            try {
+                const frequencies = [261.63, 293.66, 329.63, 392.00, 440.00];
+                const freq = frequencies[Math.floor(Math.random() * frequencies.length)];
+                
+                const osc = audioContext.createOscillator();
+                const gain = audioContext.createGain();
+                
+                osc.connect(gain);
+                gain.connect(masterGain);
+                
+                osc.frequency.value = freq;
+                osc.type = 'sine';
+                
+                const now = audioContext.currentTime;
+                gain.gain.setValueAtTime(0, now);
+                gain.gain.linearRampToValueAtTime(0.2, now + 0.01);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+                
+                osc.start(now);
+                osc.stop(now + 0.5);
+            } catch (e) {
+                console.error('Play note failed:', e);
+            }
+        }
+        
+        // Generate random post data
+        function generatePost() {
+            const names = ['Emma', 'Liam', 'Olivia', 'Noah', 'Ava'];
+            const texts = [
+                'Having a great day! 😊',
+                'Check out this amazing view! 🌅',
+                'Coffee time ☕',
+                'Working on something exciting! 🚀',
+                'Weekend vibes 🎉'
+            ];
+            
+            return {
+                id: postId++,
+                name: names[Math.floor(Math.random() * names.length)],
+                text: texts[Math.floor(Math.random() * texts.length)],
+                time: '2 hours ago'
+            };
+        }
+        
+        // Create and insert a single post
+        function createPost(postData) {
+            const postDiv = document.createElement('div');
+            postDiv.className = 'post';
+            postDiv.dataset.postId = postData.id;
+            
+            postDiv.innerHTML = `
+                <div class="post-header">
+                    <div class="avatar">${postData.name[0]}</div>
+                    <div>
+                        <div><strong>${postData.name}</strong></div>
+                        <div style="font-size: 12px; color: #999;">${postData.time}</div>
+                    </div>
+                </div>
+                <div>${postData.text}</div>
+                <div class="post-actions">
+                    <button class="action-btn like-btn" role="button" tabindex="0" aria-pressed="false">👍 Like</button>
+                    <button class="action-btn" role="button" tabindex="0">💬 Comment</button>
+                    <button class="action-btn" role="button" tabindex="0">📤 Share</button>
+                </div>
+            `;
+            
+            // Wire up interactions
+            const likeBtn = postDiv.querySelector('.like-btn');
+            likeBtn.addEventListener('click', function() {
+                this.classList.toggle('liked');
+                const isLiked = this.classList.contains('liked');
+                this.setAttribute('aria-pressed', isLiked);
+                this.textContent = isLiked ? '❤️ Liked' : '👍 Like';
+                playNote();
+            });
+            
+            // Add sound to all buttons
+            postDiv.querySelectorAll('.action-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    initAudio();
+                    playNote();
+                });
+            });
+            
+            return postDiv;
+        }
+        
+        // Load more posts
+        function loadMore() {
+            if (isLoading) return;
+            isLoading = true;
+            
+            const container = document.getElementById('posts-container');
+            const feed = document.querySelector('.feed');
+            feed.setAttribute('aria-busy', 'true');
+            
+            // Create skeletons
+            const skeletons = [];
+            for (let i = 0; i < 5; i++) {
+                const skeleton = document.createElement('div');
+                skeleton.className = 'skeleton-post';
+                container.appendChild(skeleton);
+                skeletons.push(skeleton);
+            }
+            
+            // Replace skeletons with real posts after delay
+            setTimeout(() => {
+                skeletons.forEach(skeleton => {
+                    const postData = generatePost();
+                    const postElement = createPost(postData);
+                    skeleton.replaceWith(postElement);
+                });
+                
+                feed.setAttribute('aria-busy', 'false');
+                isLoading = false;
+            }, 800);
+        }
+        
+        // Initialize everything when DOM is ready
+        window.addEventListener('DOMContentLoaded', () => {
+            console.log('DOM loaded, initializing...');
+            
+            // Set up intersection observer for infinite scroll
+            const sentinel = document.getElementById('sentinel');
+            const observer = new IntersectionObserver(
+                (entries) => {
+                    if (entries[0].isIntersecting) {
+                        console.log('Sentinel intersecting, loading more...');
+                        loadMore();
+                    }
+                },
+                { rootMargin: '200px 0px' }
+            );
+            observer.observe(sentinel);
+            
+            // Load initial posts
+            loadMore();
+            setTimeout(() => loadMore(), 100);
+            
+            // Set up audio controls
+            const audioToggle = document.getElementById('audio-toggle');
+            const volumeSlider = document.getElementById('volume-slider');
+            
+            audioToggle.addEventListener('click', () => {
+                initAudio();
+                isAudioEnabled = !isAudioEnabled;
+                audioToggle.textContent = isAudioEnabled ? '🔊 Sound On' : '🔇 Sound Off';
+                playNote();
+            });
+            
+            volumeSlider.addEventListener('input', (e) => {
+                if (masterGain) {
+                    masterGain.gain.value = e.target.value / 100;
+                }
+            });
+            
+            // Initialize audio on first interaction
+            document.addEventListener('click', () => {
+                initAudio();
+            }, { once: true });
+            
+            // Throttled scroll sound
+            let scrollTimeout;
+            window.addEventListener('scroll', () => {
+                if (!isAudioEnabled) return;
+                clearTimeout(scrollTimeout);
+                scrollTimeout = setTimeout(() => {
+                    playNote();
+                }, 200);
+            });
+        });
+    </script>
+</body>
+</html>
