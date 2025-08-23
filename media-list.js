@@ -929,4 +929,4 @@ const mediaList = [
   "DNT9MvjtiTY_9.jpg"
 ];
 
-export default mediaList;
+
