@@ -6,32 +6,19 @@
 <title>Melodic Feed</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Billabong&display=swap');
-body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-    margin: 0; background: #121212; color: #e0e0e0;
-}
-.header {
-    background: #1f1f1f; padding: 15px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.7);
-    position: sticky; top: 0; z-index: 100; display: flex; align-items: center; justify-content: center;
-    border-bottom: 1px solid #333;
-}
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; margin:0; background:#121212; color:#e0e0e0; }
+.header { background:#1f1f1f; padding:15px 20px; box-shadow:0 1px 3px rgba(0,0,0,0.7); position:sticky; top:0; z-index:100; display:flex; align-items:center; justify-content:center; border-bottom:1px solid #333; }
 .header h1 { font-family:'Billabong', cursive; font-size:32px; color:#e0e0e0; }
 .feed { max-width:600px; margin:20px auto; padding:0; }
-.post {
-    background: #1e1e1e; border-radius: 8px; padding: 15px; margin-bottom: 15px;
-    box-shadow: 0 0 1px rgba(0,0,0,0.5); border:1px solid #333;
-}
+.post { background:#1e1e1e; border-radius:8px; padding:15px; margin-bottom:15px; box-shadow:0 0 1px rgba(0,0,0,0.5); border:1px solid #333; }
 .post-header { display:flex; align-items:center; margin-bottom:10px; }
-.avatar {
-    width:40px; height:40px; border-radius:50%; background:#3a3a3a; color:#fff;
-    display:flex; align-items:center; justify-content:center; margin-right:10px;
-}
+.avatar { width:40px; height:40px; border-radius:50%; background:#3a3a3a; color:#fff; display:flex; align-items:center; justify-content:center; margin-right:10px; }
 .post-actions { display:flex; gap:10px; margin-top:10px; padding-top:10px; border-top:1px solid #444; }
 .action-btn { flex:1; padding:8px; border:none; background:none; cursor:pointer; color:#b3b3b3; font-weight:bold; text-align:center; }
 .action-btn:hover { background:#333; border-radius:4px; }
 .action-btn.liked { color:#ed4956; }
 .skeleton-post { background:#1e1e1e; border-radius:8px; padding:15px; margin-bottom:15px; height:150px; animation:pulse 1.5s infinite; border:1px solid #333; }
-@keyframes pulse { 0%{opacity:0.6}50%{opacity:1}100%{opacity:0.6} }
+@keyframes pulse { 0%{opacity:0.6} 50%{opacity:1} 100%{opacity:0.6} }
 </style>
 </head>
 <body>
@@ -41,35 +28,66 @@ body {
     <div id="sentinel"></div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/tone@next/build/Tone.js"></script>
 <script src="media-list.js"></script>
 <script>
-let audioContext=null, masterGain=null, postId=0, isLoading=false, currentWaveform='sine';
-const voices = {}; // pointerId -> {osc,gain,filter}
+let postId = 0, isLoading = false, currentWaveform = 'sine';
+const voices = {}; // pointerId -> Tone.Synth
 
-const basePitches=[261.63,311.13,349.23,392.00,466.16];
-const scalePitches=[]; for(let o=0;o<4;o++){basePitches.forEach(f=>scalePitches.push(f*Math.pow(2,o)));}
+// minor pentatonic C scale across octaves
+const basePitches = ['C4','D#4','F4','G4','A#4','C5','D#5','F5','G5','A#5'];
 
-function initAudio(){if(!audioContext){audioContext=new (window.AudioContext||window.webkitAudioContext)(); masterGain=audioContext.createGain(); masterGain.gain.value=0.5; masterGain.connect(audioContext.destination);}}
-function yToFreq(y){const n=1-Math.min(Math.max(y/window.innerHeight,0),1); const idx=Math.round(n*(scalePitches.length-1)); return scalePitches[idx];}
-function xToCutoff(x){const n=Math.min(Math.max(x/window.innerWidth,0),1); return 200+n*(8000-200);}
+function yToNote(y){
+    const norm = 1 - Math.min(Math.max(y/window.innerHeight,0),1);
+    const idx = Math.floor(norm * (basePitches.length-1));
+    return basePitches[idx];
+}
+function xToFilter(x){
+    const norm = Math.min(Math.max(x/window.innerWidth,0),1);
+    return 200 + norm*(8000-200);
+}
 
-function startVoice(id,x,y){if(Object.keys(voices).length>=3) return; initAudio(); if(voices[id]) return;
-const osc=audioContext.createOscillator(), gain=audioContext.createGain(), filter=audioContext.createBiquadFilter();
-osc.type=currentWaveform; filter.type='lowpass'; filter.Q.value=7;
-osc.connect(filter); filter.connect(gain); gain.connect(masterGain);
-gain.gain.setValueAtTime(0.2,audioContext.currentTime); osc.start();
-voices[id]={osc,gain,filter}; updateVoice(id,x,y);}
-function updateVoice(id,x,y){const v=voices[id]; if(!v) return; v.osc.frequency.setValueAtTime(yToFreq(y),audioContext.currentTime); v.filter.frequency.setValueAtTime(xToCutoff(x),audioContext.currentTime);}
-function stopVoice(id){const v=voices[id]; if(!v) return; v.gain.gain.exponentialRampToValueAtTime(0.001,audioContext.currentTime+0.1); v.osc.stop(audioContext.currentTime+0.12); delete voices[id];}
+function startVoice(id,x,y){
+    if(Object.keys(voices).length >= 3) return;
+    if(voices[id]) return;
+    const synth = new Tone.Synth({ oscillator: { type: currentWaveform }, envelope: { attack:0.01, decay:0.1, sustain:0.5, release:0.2 } }).toDestination();
+    const filter = new Tone.Filter(xToFilter(x), "lowpass").toDestination();
+    synth.connect(filter);
+    synth.triggerAttack(yToNote(y));
+    voices[id] = { synth, filter };
+}
+function updateVoice(id,x,y){
+    const v = voices[id]; if(!v) return;
+    v.synth.frequency.value = Tone.Frequency(yToNote(y));
+    v.filter.frequency.value = xToFilter(x);
+}
+function stopVoice(id){
+    const v = voices[id]; if(!v) return;
+    v.synth.triggerRelease();
+    delete voices[id];
+}
 
-document.addEventListener('pointerdown',e=>startVoice(e.pointerId,e.clientX,e.clientY));
-document.addEventListener('pointermove',e=>updateVoice(e.pointerId,e.clientX,e.clientY));
-document.addEventListener('pointerup',e=>stopVoice(e.pointerId));
-document.addEventListener('pointercancel',e=>stopVoice(e.pointerId));
-document.addEventListener('lostpointercapture',e=>stopVoice(e.pointerId));
+document.addEventListener('pointerdown', e => startVoice(e.pointerId, e.clientX, e.clientY));
+document.addEventListener('pointermove', e => updateVoice(e.pointerId, e.clientX, e.clientY));
+document.addEventListener('pointerup', e => stopVoice(e.pointerId));
+document.addEventListener('pointercancel', e => stopVoice(e.pointerId));
+document.addEventListener('lostpointercapture', e => stopVoice(e.pointerId));
 
-function renderMedia(path){const ext=path.split('.').pop().toLowerCase(); if(['jpg','jpeg','png'].includes(ext)) return `<div style="margin-top:10px;"><img src="${path}" alt="Post media" style="width:100%;border-radius:8px;"></div>`; if(ext==='mp4') return `<div style="margin-top:10px;"><video src="${path}" controls style="width:100%;border-radius:8px;"></video></div>`; return '';}
-function generatePost(){const names=['Emma','Liam','Olivia','Noah','Ava']; const texts=['Having a great day! 😊','Check out this amazing view! 🌅','Coffee time ☕','Working on something exciting! 🚀','Weekend vibes 🎉']; let media=null; if(typeof mediaList!=='undefined' && mediaList.length>0 && Math.random()>0.5) media=mediaList[Math.floor(Math.random()*mediaList.length)]; return {id:postId++, name:names[Math.floor(Math.random()*names.length)], text:texts[Math.floor(Math.random()*texts.length)], time:'2 hours ago', media};}
+// media rendering and posts
+function renderMedia(path){
+    const ext=path.split('.').pop().toLowerCase();
+    if(['jpg','jpeg','png'].includes(ext)) return `<div style="margin-top:10px;"><img src="${path}" alt="Post media" style="width:100%;border-radius:8px;"></div>`;
+    if(ext==='mp4') return `<div style="margin-top:10px;"><video src="${path}" controls style="width:100%;border-radius:8px;"></video></div>`;
+    return '';
+}
+
+function generatePost(){
+    const names=['Emma','Liam','Olivia','Noah','Ava'];
+    const texts=['Having a great day! 😊','Check out this amazing view! 🌅','Coffee time ☕','Working on something exciting! 🚀','Weekend vibes 🎉'];
+    let media=null;
+    if(typeof mediaList!=='undefined' && mediaList.length>0 && Math.random()>0.5) media=mediaList[Math.floor(Math.random()*mediaList.length)];
+    return {id:postId++, name:names[Math.floor(Math.random()*names.length)], text:texts[Math.floor(Math.random()*texts.length)], time:'2 hours ago', media};
+}
 
 function createPost(postData){
     const postDiv=document.createElement('div'); postDiv.className='post'; postDiv.dataset.postId=postData.id;
@@ -92,12 +110,9 @@ function loadMore(){if(isLoading) return; isLoading=true;
     feed.setAttribute('aria-busy','true'); const skeletons=[];
     for(let i=0;i<5;i++){const skeleton=document.createElement('div'); skeleton.className='skeleton-post'; container.appendChild(skeleton); skeletons.push(skeleton);}
     setTimeout(()=>{
-        skeletons.forEach(s=>{
-            const post=createPost(generatePost());
-            s.replaceWith(post);
-        });
+        skeletons.forEach(s=>{const post=createPost(generatePost()); s.replaceWith(post);});
         feed.setAttribute('aria-busy','false'); isLoading=false;
-    },400); // slightly faster to avoid freezing
+    },300);
 }
 
 window.addEventListener('DOMContentLoaded',()=>{
