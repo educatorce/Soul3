@@ -3,12 +3,15 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Melodic Feed</title>
+<title>Melodic Feed Theremin</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Billabong&display=swap');
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; margin:0; background:#121212; color:#e0e0e0; }
-.header { background:#1f1f1f; padding:15px 20px; box-shadow:0 1px 3px rgba(0,0,0,0.7); position:sticky; top:0; z-index:100; display:flex; align-items:center; justify-content:center; border-bottom:1px solid #333; }
-.header h1 { font-family:'Billabong', cursive; font-size:32px; color:#e0e0e0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; margin:0; background:#121212; color:#e0e0e0; overflow-x:hidden; }
+.header { background:#1f1f1f; padding:10px 20px; box-shadow:0 1px 3px rgba(0,0,0,0.7); position:sticky; top:0; z-index:100; display:flex; align-items:center; justify-content:flex-start; gap:10px; }
+.header h1 { font-family:'Billabong', cursive; font-size:32px; color:#e0e0e0; margin:0; }
+.menu-btn { background:none;border:none;color:#e0e0e0;font-size:22px;cursor:pointer; }
+.dropdown { display:none; position:absolute; top:40px; left:0; background:#1f1f1f; padding:10px; border-radius:8px; z-index:200; }
+.dropdown label, .dropdown select, .dropdown input { color:#e0e0e0; margin-right:5px; }
 .feed { max-width:600px; margin:20px auto; padding:0; }
 .post { background:#1e1e1e; border-radius:8px; padding:15px; margin-bottom:15px; box-shadow:0 0 1px rgba(0,0,0,0.5); border:1px solid #333; }
 .post-header { display:flex; align-items:center; margin-bottom:10px; }
@@ -19,102 +22,233 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helv
 .action-btn.liked { color:#ed4956; }
 .skeleton-post { background:#1e1e1e; border-radius:8px; padding:15px; margin-bottom:15px; height:150px; animation:pulse 1.5s infinite; border:1px solid #333; }
 @keyframes pulse { 0%{opacity:0.6} 50%{opacity:1} 100%{opacity:0.6} }
-/* Instrument menu styling */
-.instrument-menu { position:fixed; bottom:20px; left:20px; background:#1f1f1f; padding:10px 15px; border-radius:10px; color:#e0e0e0; z-index:200; }
-.instrument-menu select { margin-left:10px; padding:4px; }
+/* touch visuals */
+#touch-visuals { position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:300; }
 </style>
 </head>
 <body>
-<div class="header"><h1>🎵 MeloFeed</h1></div>
+
+<div class="header">
+  <h1>🎵 MeloFeed</h1>
+  <!-- Instrument menu -->
+  <div style="position:relative;">
+    <button class="menu-btn" id="menu-instr">🎹</button>
+    <div class="dropdown" id="instr-dropdown">
+      <label for="instrument-select">Instrument:</label>
+      <select id="instrument-select">
+        <option value="Synth">Synth (Sine)</option>
+        <option value="AMSynth">AMSynth</option>
+        <option value="FMSynth">FMSynth</option>
+        <option value="MembraneSynth">MembraneSynth</option>
+      </select>
+    </div>
+  </div>
+  <!-- Effects menu -->
+  <div style="position:relative;">
+    <button class="menu-btn" id="menu-effects">🎛️</button>
+    <div class="dropdown" id="effects-dropdown">
+      <label><input type="checkbox" class="effect-toggle" value="Reverb"> Reverb</label><br>
+      <label><input type="checkbox" class="effect-toggle" value="Chorus"> Chorus</label><br>
+      <label><input type="checkbox" class="effect-toggle" value="Distortion"> Distortion</label><br>
+      <label><input type="checkbox" class="effect-toggle" value="Tremolo"> Tremolo</label><br>
+      <label><input type="checkbox" class="effect-toggle" value="Vibrato"> Vibrato</label><br>
+      <label><input type="checkbox" class="effect-toggle" value="Delay"> Delay</label>
+    </div>
+  </div>
+  <!-- Scale menu -->
+  <div style="position:relative;">
+    <button class="menu-btn" id="menu-scale">🎼</button>
+    <div class="dropdown" id="scale-dropdown">
+      <label for="scale-select">Scale:</label>
+      <select id="scale-select">
+        <option>Major</option><option>Minor</option><option>Pentatonic</option>
+        <option>Harmonic Minor</option><option>Dorian</option><option>Phrygian</option>
+      </select>
+    </div>
+  </div>
+  <!-- Tonality menu -->
+  <div style="position:relative;">
+    <button class="menu-btn" id="menu-tonic">🎵</button>
+    <div class="dropdown" id="tonic-dropdown">
+      <select id="tonic-select">
+        <option>C</option><option>C#</option><option>D</option><option>D#</option>
+        <option>E</option><option>F</option><option>F#</option><option>G</option>
+        <option>G#</option><option>A</option><option>A#</option><option>B</option>
+      </select>
+    </div>
+  </div>
+</div>
 
 <div class="feed" role="feed" aria-live="polite">
     <div id="posts-container"></div>
     <div id="sentinel"></div>
 </div>
 
-<div class="instrument-menu">
-    <label for="instrument-select">Instrument:</label>
-    <select id="instrument-select">
-        <option value="Synth">Synth (Sine)</option>
-        <option value="AMSynth">AMSynth</option>
-        <option value="FMSynth">FMSynth</option>
-        <option value="MembraneSynth">MembraneSynth</option>
-    </select>
-</div>
+<div id="touch-visuals"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/tone@next/build/Tone.js"></script>
 <script src="media-list.js"></script>
 <script>
-let postId = 0, isLoading = false, currentWaveform = 'sine', selectedInstrument = 'Synth';
-const voices = {}, maxVoices = 2;
-const basePitches = ['C4','D#4','F4','G4','A#4','C5','D#5','F5','G5','A#5'];
+let postId = 0, isLoading = false;
+let voices = {};
+let maxVoices = 1;
+let currentWaveform = 'sine';
+let selectedInstrument = 'Synth';
+let selectedScale = 'Pentatonic';
+let selectedTonic = 'C';
+let enabledEffects = {};
 
-const instrumentSelect = document.getElementById('instrument-select');
-instrumentSelect.addEventListener('change', e => { selectedInstrument = e.target.value; });
+const scales = {
+  Major:[0,2,4,5,7,9,11,12],
+  Minor:[0,2,3,5,7,8,10,12],
+  Pentatonic:[0,2,4,7,9,12],
+  'Harmonic Minor':[0,2,3,5,7,8,11,12],
+  Dorian:[0,2,3,5,7,9,10,12],
+  Phrygian:[0,1,3,5,7,8,10,12]
+};
 
-async function initAudio(){ await Tone.start(); }
+const menuMap = {
+  'menu-instr':'instr-dropdown',
+  'menu-effects':'effects-dropdown',
+  'menu-scale':'scale-dropdown',
+  'menu-tonic':'tonic-dropdown'
+};
 
-function yToNote(y){ const norm = 1 - Math.min(Math.max(y/window.innerHeight,0),1); return basePitches[Math.floor(norm*(basePitches.length-1))]; }
-function xToFilter(x){ const norm = Math.min(Math.max(x/window.innerWidth,0),1); return 200 + norm*(8000-200); }
-
-function startVoice(id,x,y){
-    if(Object.keys(voices).length >= maxVoices) return;
-    if(voices[id]) return; // only play once per press
-    let synth;
-    switch(selectedInstrument){
-        case 'AMSynth': synth = new Tone.AMSynth({envelope:{attack:0.01, decay:0.1, sustain:0.5, release:0.2}}).toDestination(); break;
-        case 'FMSynth': synth = new Tone.FMSynth({envelope:{attack:0.01, decay:0.1, sustain:0.5, release:0.2}}).toDestination(); break;
-        case 'MembraneSynth': synth = new Tone.MembraneSynth({envelope:{attack:0.01, decay:0.1, sustain:0.5, release:0.2}}).toDestination(); break;
-        default: synth = new Tone.Synth({oscillator:{type:currentWaveform}, envelope:{attack:0.01, decay:0.1, sustain:0.5, release:0.2}}).toDestination();
-    }
-    const filter = new Tone.Filter(xToFilter(x),"lowpass").toDestination();
-    synth.connect(filter);
-    synth.triggerAttackRelease(yToNote(y), "8n"); // play only once
-    voices[id] = { synth, filter };
+for(const btnId in menuMap){
+  const btn = document.getElementById(btnId);
+  const dd = document.getElementById(menuMap[btnId]);
+  btn.addEventListener('click',()=>{ dd.style.display = dd.style.display==='none'?'block':'none'; });
 }
 
-function stopVoice(id){ delete voices[id]; } // nothing to release, note already finished
+document.getElementById('instrument-select').addEventListener('change',e=>selectedInstrument=e.target.value);
+document.getElementById('scale-select').addEventListener('change',e=>selectedScale=e.target.value);
+document.getElementById('tonic-select').addEventListener('change',e=>selectedTonic=e.target.value);
+document.querySelectorAll('.effect-toggle').forEach(cb=>cb.addEventListener('change',e=>{enabledEffects[e.target.value]=e.target.checked;}));
 
-// pointer + touch events
-document.addEventListener('pointerdown', e => { initAudio(); startVoice(e.pointerId,e.clientX,e.clientY); });
-document.addEventListener('touchstart', e => { initAudio(); for(let t of e.changedTouches) startVoice(t.identifier,t.clientX,t.clientY); e.preventDefault(); }, {passive:false});
+const touchVisuals = document.getElementById('touch-visuals');
+function showTouch(id,x,y){
+  const circle = document.createElement('div');
+  circle.id='tv-'+id;
+  circle.style.position='absolute';
+  circle.style.width='30px'; circle.style.height='30px';
+  circle.style.background='#ff5f6d';
+  circle.style.borderRadius='50%';
+  circle.style.left=(x-15)+'px';
+  circle.style.top=(y-15)+'px';
+  circle.style.opacity='0.7';
+  circle.style.pointerEvents='none';
+  touchVisuals.appendChild(circle);
+  setTimeout(()=>{ circle.remove(); },500);
+}
 
-// posts & media
-function renderMedia(path){ const ext=path.split('.').pop().toLowerCase();
-if(['jpg','jpeg','png'].includes(ext)) return `<div style="margin-top:10px;"><img src="${path}" alt="Post media" style="width:100%;border-radius:8px;"></div>`;
-if(ext==='mp4') return `<div style="margin-top:10px;"><video src="${path}" controls style="width:100%;border-radius:8px;"></video></div>`; return ''; }
+function initAudio(){ Tone.start(); }
 
-function generatePost(){ const names=['Emma','Liam','Olivia','Noah','Ava']; const texts=['Having a great day! 😊','Check out this amazing view! 🌅','Coffee time ☕','Working on something exciting! 🚀','Weekend vibes 🎉'];
-let media=null; if(typeof mediaList!=='undefined' && mediaList.length>0 && Math.random()>0.5) media=mediaList[Math.floor(Math.random()*mediaList.length)];
-return {id:postId++, name:names[Math.floor(Math.random()*names.length)], text:texts[Math.floor(Math.random()*texts.length)], time:'2 hours ago', media}; }
+function yToNote(y){
+  const norm = 1-Math.min(Math.max(y/window.innerHeight,0),1);
+  const scale = scales[selectedScale];
+  const noteIndex = Math.floor(norm*(scale.length-1));
+  return selectedTonic + scale[noteIndex];
+}
+
+function xToFilter(x){ const norm=Math.min(Math.max(x/window.innerWidth,0),1); return 200+norm*(8000-200); }
+
+function startVoice(id,x,y){
+  if(Object.keys(voices).length>=maxVoices) return;
+  if(voices[id]) return;
+  showTouch(id,x,y);
+
+  let synth;
+  switch(selectedInstrument){
+    case 'AMSynth': synth = new Tone.AMSynth().toDestination(); break;
+    case 'FMSynth': synth = new Tone.FMSynth().toDestination(); break;
+    case 'MembraneSynth': synth = new Tone.MembraneSynth().toDestination(); break;
+    default: synth = new Tone.Synth({oscillator:{type:currentWaveform}}).toDestination();
+  }
+
+  let node = synth;
+  if(enabledEffects['Reverb']) { const eff = new Tone.Reverb(2).toDestination(); node.connect(eff); node=eff; }
+  if(enabledEffects['Chorus']) { const eff = new Tone.Chorus().toDestination().start(); node.connect(eff); node=eff; }
+  if(enabledEffects['Distortion']) { const eff = new Tone.Distortion(0.4).toDestination(); node.connect(eff); node=eff; }
+  if(enabledEffects['Tremolo']) { const eff = new Tone.Tremolo().toDestination().start(); node.connect(eff); node=eff; }
+  if(enabledEffects['Vibrato']) { const eff = new Tone.Vibrato().toDestination().start(); node.connect(eff); node=eff; }
+  if(enabledEffects['Delay']) { const eff = new Tone.FeedbackDelay("8n",0.5).toDestination(); node.connect(eff); node=eff; }
+
+  const filter = new Tone.Filter(xToFilter(x),"lowpass").toDestination();
+  node.connect(filter);
+
+  synth.triggerAttack(yToNote(y));
+  voices[id]={synth,filter,node};
+}
+
+function updateVoice(id,x,y){
+  const v=voices[id]; if(!v) return;
+  v.synth.frequency.value = Tone.Frequency(yToNote(y));
+  v.filter.frequency.value = xToFilter(x);
+}
+
+function stopVoice(id){
+  const v=voices[id]; if(!v) return;
+  v.synth.triggerRelease();
+  delete voices[id];
+}
+
+// pointer events
+document.addEventListener('pointerdown',e=>{ initAudio(); startVoice('main',e.clientX,e.clientY); });
+document.addEventListener('pointermove',e=>{ updateVoice('main',e.clientX,e.clientY); });
+document.addEventListener('pointerup',e=>{ stopVoice('main'); });
+
+// ---- Posts generation ----
+function generatePost(){
+  const names = ['Emma','Liam','Olivia','Noah','Ava'];
+  const texts = ['Having a great day! 😊','Check out this amazing view! 🌅','Coffee time ☕','Working on something exciting! 🚀','Weekend vibes 🎉'];
+  let media=null;
+  if(typeof mediaList!=='undefined' && mediaList.length>0 && Math.random()>0.5) media=mediaList[Math.floor(Math.random()*mediaList.length)];
+  return {id:postId++,name:names[Math.floor(Math.random()*names.length)],text:texts[Math.floor(Math.random()*texts.length)],time:'2 hours ago',media};
+}
+
+function renderMedia(filePath){
+  const ext=filePath.split('.').pop().toLowerCase();
+  if(['jpg','jpeg','png'].includes(ext)) return `<div style="margin-top:10px;"><img src="${filePath}" alt="Post media" style="width:100%; border-radius:8px;"></div>`;
+  if(ext==='mp4') return `<div style="margin-top:10px;"><video src="${filePath}" controls style="width:100%; border-radius:8px;"></video></div>`;
+  return '';
+}
 
 function createPost(postData){
-    const postDiv=document.createElement('div'); postDiv.className='post'; postDiv.dataset.postId=postData.id;
-    postDiv.innerHTML=`<div class="post-header"><div class="avatar">${postData.name[0]}</div><div><div><strong>${postData.name}</strong></div><div style="font-size:12px;color:#999;">${postData.time}</div></div></div>
+  const postDiv=document.createElement('div');
+  postDiv.className='post'; postDiv.dataset.postId=postData.id;
+  postDiv.innerHTML=`
+    <div class="post-header">
+      <div class="avatar">${postData.name[0]}</div>
+      <div><div><strong>${postData.name}</strong></div><div style="font-size:12px;color:#999;">${postData.time}</div></div>
+    </div>
     <div>${postData.text}</div>
     ${postData.media?renderMedia(postData.media):''}
     <div class="post-actions">
-        <button class="action-btn like-btn">👍 Like</button>
-        <button class="action-btn comment-btn">💬 Comment</button>
-        <button class="action-btn share-btn">📤 Share</button>
+      <button class="action-btn like-btn" role="button" tabindex="0" aria-pressed="false">👍 Like</button>
+      <button class="action-btn" role="button" tabindex="0">💬 Comment</button>
+      <button class="action-btn" role="button" tabindex="0">📤 Share</button>
     </div>`;
-    postDiv.querySelector('.like-btn').addEventListener('click',()=>{currentWaveform='sine'; postDiv.querySelector('.like-btn').classList.toggle('liked');});
-    postDiv.querySelector('.comment-btn').addEventListener('click',()=>{currentWaveform='square';});
-    postDiv.querySelector('.share-btn').addEventListener('click',()=>{currentWaveform='triangle';});
-    return postDiv;
+  const likeBtn=postDiv.querySelector('.like-btn');
+  likeBtn.addEventListener('click',()=>{ likeBtn.classList.toggle('liked'); const liked=likeBtn.classList.contains('liked'); likeBtn.setAttribute('aria-pressed',liked); likeBtn.textContent=liked?'❤️ Liked':'👍 Like'; });
+  return postDiv;
 }
 
-function loadMore(){ if(isLoading) return; isLoading=true;
-    const container=document.getElementById('posts-container'); const feed=document.querySelector('.feed'); feed.setAttribute('aria-busy','true'); const skeletons=[];
-    for(let i=0;i<5;i++){ const skeleton=document.createElement('div'); skeleton.className='skeleton-post'; container.appendChild(skeleton); skeletons.push(skeleton);}
-    setTimeout(()=>{ skeletons.forEach(s=>{ const post=createPost(generatePost()); s.replaceWith(post); }); feed.setAttribute('aria-busy','false'); isLoading=false; },300);
+function loadMore(){
+  if(isLoading) return;
+  isLoading=true;
+  const container=document.getElementById('posts-container');
+  const feed=document.querySelector('.feed');
+  feed.setAttribute('aria-busy','true');
+  const skeletons=[];
+  for(let i=0;i<5;i++){ const s=document.createElement('div'); s.className='skeleton-post'; container.appendChild(s); skeletons.push(s);}
+  setTimeout(()=>{ skeletons.forEach(s=>{ const postData=generatePost(); const postElement=createPost(postData); s.replaceWith(postElement); }); feed.setAttribute('aria-busy','false'); isLoading=false; },800);
 }
 
 window.addEventListener('DOMContentLoaded',()=>{
-    const sentinel=document.getElementById('sentinel');
-    const observer=new IntersectionObserver(entries=>{if(entries[0].isIntersecting) loadMore();},{rootMargin:'200px 0px'});
-    observer.observe(sentinel);
-    loadMore(); setTimeout(()=>loadMore(),100);
+  const sentinel=document.getElementById('sentinel');
+  const observer=new IntersectionObserver(entries=>{ if(entries[0].isIntersecting) loadMore(); },{rootMargin:'200px 0px'});
+  observer.observe(sentinel);
+  loadMore(); setTimeout(()=>loadMore(),100);
 });
 </script>
 </body>
