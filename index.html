@@ -32,14 +32,17 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helv
 <script src="media-list.js"></script>
 <script>
 let postId = 0, isLoading = false, currentWaveform = 'sine';
-const voices = {}; // pointerId -> Tone.Synth
-
-// minor pentatonic C scale across octaves
+const voices = {}; // pointerId -> {synth, filter}
+const maxVoices = 2;
 const basePitches = ['C4','D#4','F4','G4','A#4','C5','D#5','F5','G5','A#5'];
+
+async function initAudio(){
+    await Tone.start(); // unlock audio on first gesture
+}
 
 function yToNote(y){
     const norm = 1 - Math.min(Math.max(y/window.innerHeight,0),1);
-    const idx = Math.floor(norm * (basePitches.length-1));
+    const idx = Math.floor(norm*(basePitches.length-1));
     return basePitches[idx];
 }
 function xToFilter(x){
@@ -48,10 +51,10 @@ function xToFilter(x){
 }
 
 function startVoice(id,x,y){
-    if(Object.keys(voices).length >= 3) return;
+    if(Object.keys(voices).length >= maxVoices) return;
     if(voices[id]) return;
-    const synth = new Tone.Synth({ oscillator: { type: currentWaveform }, envelope: { attack:0.01, decay:0.1, sustain:0.5, release:0.2 } }).toDestination();
-    const filter = new Tone.Filter(xToFilter(x), "lowpass").toDestination();
+    const synth = new Tone.Synth({ oscillator: { type: currentWaveform }, envelope:{ attack:0.01, decay:0.1, sustain:0.5, release:0.2 } }).toDestination();
+    const filter = new Tone.Filter(xToFilter(x),"lowpass").toDestination();
     synth.connect(filter);
     synth.triggerAttack(yToNote(y));
     voices[id] = { synth, filter };
@@ -67,13 +70,20 @@ function stopVoice(id){
     delete voices[id];
 }
 
-document.addEventListener('pointerdown', e => startVoice(e.pointerId, e.clientX, e.clientY));
-document.addEventListener('pointermove', e => updateVoice(e.pointerId, e.clientX, e.clientY));
+// Pointer events
+document.addEventListener('pointerdown', e => { initAudio(); startVoice(e.pointerId,e.clientX,e.clientY); });
+document.addEventListener('pointermove', e => updateVoice(e.pointerId,e.clientX,e.clientY));
 document.addEventListener('pointerup', e => stopVoice(e.pointerId));
 document.addEventListener('pointercancel', e => stopVoice(e.pointerId));
 document.addEventListener('lostpointercapture', e => stopVoice(e.pointerId));
 
-// media rendering and posts
+// Touch events for mobile
+document.addEventListener('touchstart', e => { initAudio(); for(let t of e.changedTouches) startVoice(t.identifier,t.clientX,t.clientY); e.preventDefault(); }, { passive:false });
+document.addEventListener('touchmove', e => { for(let t of e.changedTouches) updateVoice(t.identifier,t.clientX,t.clientY); });
+document.addEventListener('touchend', e => { for(let t of e.changedTouches) stopVoice(t.identifier); });
+document.addEventListener('touchcancel', e => { for(let t of e.changedTouches) stopVoice(t.identifier); });
+
+// Posts and media
 function renderMedia(path){
     const ext=path.split('.').pop().toLowerCase();
     if(['jpg','jpeg','png'].includes(ext)) return `<div style="margin-top:10px;"><img src="${path}" alt="Post media" style="width:100%;border-radius:8px;"></div>`;
