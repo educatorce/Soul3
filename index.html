@@ -84,30 +84,19 @@ img, video { user-select:none; -webkit-user-drag:none; touch-action:none; }
 <script src="https://cdn.jsdelivr.net/npm/tone@next/build/Tone.js"></script>
 <script src="media-list.js"></script>
 <script>
-// All previous code unchanged up to theremin
-let postId=0,isLoading=false,voices={},maxVoices=1;
-let selectedInstrument='Synth',selectedScale='Major',selectedTonic='C';
+// --- Variables ---
+let postId=0,isLoading=false;
+let voices={}, maxVoices=1;
+let selectedInstrument='Synth', selectedScale='Major', selectedTonic='C';
 let enabledEffects={};
-const scales={
-  Major:[0,2,4,5,7,9,11,12],
-  Minor:[0,2,3,5,7,8,10,12],
-  Dorian:[0,2,3,5,7,9,10,12],
-  Phrygian:[0,1,3,5,7,8,10,12],
-  Lydian:[0,2,4,6,7,9,11,12],
-  Mixolydian:[0,2,4,5,7,9,10,12],
-  Aeolian:[0,2,3,5,7,8,10,12],
-  Locrian:[0,1,3,5,6,8,10,12],
-  'Harmonic Minor':[0,2,3,5,7,8,11,12],
-  'Major Pentatonic':[0,2,4,7,9,12],
-  'Minor Pentatonic':[0,3,5,7,10,12]
-};
+const scales={ Major:[0,2,4,5,7,9,11,12], Minor:[0,2,3,5,7,8,10,12], Dorian:[0,2,3,5,7,9,10,12], Phrygian:[0,1,3,5,7,8,10,12], Lydian:[0,2,4,6,7,9,11,12], Mixolydian:[0,2,4,5,7,9,10,12], Aeolian:[0,2,3,5,7,8,10,12], Locrian:[0,1,3,5,6,8,10,12], 'Harmonic Minor':[0,2,3,5,7,8,11,12], 'Major Pentatonic':[0,2,4,7,9,12], 'Minor Pentatonic':[0,3,5,7,10,12] };
 
-// Dropdown menus
+// --- Menus ---
 const menuMap={'menu-instr':'instr-dropdown','menu-effects':'effects-dropdown','menu-scale':'scale-dropdown','menu-tonic':'tonic-dropdown'};
 for(const btnId in menuMap){
   const btn=document.getElementById(btnId);
   const dd=document.getElementById(menuMap[btnId]);
-  btn.addEventListener('click',()=>{
+  btn.addEventListener('click',()=>{ 
     for(const otherId in menuMap) if(otherId!==btnId) document.getElementById(menuMap[otherId]).style.display='none';
     dd.style.display=dd.style.display==='none'?'block':'none';
   });
@@ -124,13 +113,13 @@ document.querySelectorAll('.effect-toggle').forEach(cb=>{
   });
 });
 
-// Touch visuals
+// --- Touch visuals ---
 const touchVisual=document.getElementById('touch-visual');
 const noteDisplay=document.getElementById('note-display');
 function showTouch(x,y){touchVisual.style.left=x+'px'; touchVisual.style.top=y+'px'; touchVisual.style.display='block';}
 function hideTouch(){touchVisual.style.display='none';}
 
-// Map y to note 2 octaves
+// --- Note mapping ---
 function yToNote(y){
   const norm=1-Math.min(Math.max(y/window.innerHeight,0),1);
   const scaleIntervals=scales[selectedScale];
@@ -138,12 +127,11 @@ function yToNote(y){
   const stepIndex=Math.floor(norm*totalSteps);
   const octave=3+Math.floor(stepIndex/scaleIntervals.length);
   const noteIndex=stepIndex%scaleIntervals.length;
-  const noteName = Tone.Frequency(selectedTonic + '3').transpose(scaleIntervals[noteIndex]).toNote();
-  return noteName.replace(/\d+$/, octave);
+  return Tone.Frequency(selectedTonic + '3').transpose(scaleIntervals[noteIndex]).toNote().replace(/\d+$/, octave);
 }
 function xToFilter(x){return Math.max(300,Math.min(5000,(x/window.innerWidth)*5000));}
 
-// Voice controls
+// --- Voice controls ---
 async function startVoice(id,x,y){
   await Tone.start();
   if(Object.keys(voices).length>=maxVoices) return;
@@ -164,9 +152,9 @@ async function startVoice(id,x,y){
 function updateVoice(id,x,y){
   if(!voices[id]) return;
   const note=yToNote(y);
-  const filterFreq=xToFilter(x);
-  voices[id].filter.frequency.value=filterFreq;
-  voices[id].synth.setNote(note);
+  const freq=Tone.Frequency(note).toFrequency();
+  voices[id].synth.frequency.rampTo(freq,0.05);
+  voices[id].filter.frequency.rampTo(xToFilter(x),0.05);
   noteDisplay.textContent=note;
 }
 function stopVoice(id){
@@ -176,39 +164,48 @@ function stopVoice(id){
   noteDisplay.textContent='';
 }
 
-// Post rendering (unchanged)
+// --- Posts ---
 function generatePost(){const names=['Emma','Liam','Olivia','Noah','Ava']; const texts=['Having a great day! 😊','Check out this amazing view! 🌅','Coffee time ☕','Working on something exciting! 🚀','Weekend vibes 🎉']; let media=null; if(typeof mediaList!=='undefined' && mediaList.length>0 && Math.random()>0.5) media=mediaList[Math.floor(Math.random()*mediaList.length)]; return {id:postId++,name:names[Math.floor(Math.random()*names.length)],text:texts[Math.floor(Math.random()*texts.length)],time:'2 hours ago',media};}
 function renderMedia(filePath){const ext=filePath.split('.').pop().toLowerCase(); if(['jpg','jpeg','png'].includes(ext)) return `<div style="margin-top:10px;"><img src="${filePath}" alt="Post media" style="width:100%;border-radius:8px;"></div>`; else if(ext==='mp4') return `<div style="margin-top:10px;"><video src="${filePath}" controls style="width:100%;border-radius:8px;"></video></div>`; else return '';}
 function createPost(postData){const postDiv=document.createElement('div'); postDiv.className='post'; postDiv.dataset.postId=postData.id; postDiv.innerHTML=`<div class="post-header"><div class="avatar">${postData.name[0]}</div><div><div><strong>${postData.name}</strong></div><div style="font-size:12px;color:#999;">${postData.time}</div></div></div><div>${postData.text}</div>${postData.media?renderMedia(postData.media):''}<div class="post-actions"><button class="action-btn like-btn" role="button" tabindex="0" aria-pressed="false">👍 Like</button><button class="action-btn" role="button" tabindex="0">💬 Comment</button><button class="action-btn" role="button" tabindex="0">📤 Share</button></div>`; const likeBtn=postDiv.querySelector('.like-btn'); likeBtn.addEventListener('click',()=>{ likeBtn.classList.toggle('liked'); const isLiked=likeBtn.classList.contains('liked'); likeBtn.setAttribute('aria-pressed',isLiked); likeBtn.textContent=isLiked?'❤️ Liked':'👍 Like'; }); return postDiv;}
 function loadMore(){if(isLoading)return; isLoading=true; const container=document.getElementById('posts-container'); const skeletons=[]; for(let i=0;i<5;i++){const skeleton=document.createElement('div'); skeleton.className='skeleton-post'; container.appendChild(skeleton); skeletons.push(skeleton);} setTimeout(()=>{skeletons.forEach(skeleton=>{const postData=generatePost(); const postElement=createPost(postData); skeleton.replaceWith(postElement);}); isLoading=false;},600);}
 window.addEventListener('DOMContentLoaded',()=>{const sentinel=document.getElementById('sentinel'); const observer=new IntersectionObserver(entries=>{if(entries[0].isIntersecting) loadMore();},{rootMargin:'200px 0px'}); observer.observe(sentinel); loadMore(); setTimeout(()=>loadMore(),100);});
 
-// Mobile-friendly simultaneous scroll + theremin
-let currentTouchId=null;
-document.addEventListener('touchstart', async e => {
-  const touch = e.changedTouches[0];
+// --- Mobile theremin with scroll ---
+let currentTouch=null;
+function animateTouch(){
+  if(currentTouch){
+    updateVoice('main', currentTouch.clientX, currentTouch.clientY);
+    requestAnimationFrame(animateTouch);
+  }
+}
+document.addEventListener('touchstart', async e=>{
+  const touch=e.changedTouches[0];
   if(touch.target.closest('.header,.post img,.post video')) return;
-  currentTouchId = touch.identifier;
   await Tone.start();
+  currentTouch=touch;
   startVoice('main', touch.clientX, touch.clientY);
-  showTouch(touch.clientX, touch.clientY);
+  showTouch(touch.clientX,touch.clientY);
+  requestAnimationFrame(animateTouch);
 },{passive:true});
-document.addEventListener('touchmove', e => {
-  if(currentTouchId===null) return;
-  const touch = [...e.changedTouches].find(t=>t.identifier===currentTouchId);
+document.addEventListener('touchmove', e=>{
+  const touch=Array.from(e.changedTouches).find(t=>t.identifier===currentTouch?.identifier);
   if(!touch) return;
-  updateVoice('main', touch.clientX, touch.clientY);
-  showTouch(touch.clientX, touch.clientY);
+  currentTouch=touch;
 },{passive:true});
-document.addEventListener('touchend', e => {
-  const touch = [...e.changedTouches].find(t=>t.identifier===currentTouchId);
+document.addEventListener('touchend', e=>{
+  const touch=Array.from(e.changedTouches).find(t=>t.identifier===currentTouch?.identifier);
   if(!touch) return;
-  stopVoice('main'); hideTouch(); currentTouchId=null;
+  stopVoice('main');
+  hideTouch();
+  currentTouch=null;
 },{passive:true});
-document.addEventListener('touchcancel', e => {
-  const touch = [...e.changedTouches].find(t=>t.identifier===currentTouchId);
+document.addEventListener('touchcancel', e=>{
+  const touch=Array.from(e.changedTouches).find(t=>t.identifier===currentTouch?.identifier);
   if(!touch) return;
-  stopVoice('main'); hideTouch(); currentTouchId=null;
+  stopVoice('main');
+  hideTouch();
+  currentTouch=null;
 },{passive:true});
 </script>
 </body>
