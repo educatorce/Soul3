@@ -6,7 +6,7 @@
 <title>Melodic Feed Theremin</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Billabong&display=swap');
-body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif; margin:0; background:#121212; color:#e0e0e0; overflow-x:hidden; }
+body, .feed { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif; margin:0; background:#121212; color:#e0e0e0; overflow-x:hidden; touch-action:none; }
 .header { background:#1f1f1f; padding:10px; box-shadow:0 1px 3px rgba(0,0,0,0.7); position:sticky; top:0; z-index:100; display:flex; align-items:center; gap:5px; flex-wrap:wrap; }
 .header h1 { font-family:'Billabong',cursive; font-size:32px; color:#e0e0e0; margin:0; flex:1; }
 .menu-btn { background:none;border:none;color:#e0e0e0;font-size:22px;cursor:pointer; }
@@ -23,8 +23,8 @@ body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica
 .skeleton-post { background:#1e1e1e; border-radius:8px; padding:15px; margin-bottom:15px; height:150px; animation:pulse 1.5s infinite; border:1px solid #333; }
 @keyframes pulse {0%{opacity:0.6}50%{opacity:1}100%{opacity:0.6}}
 #touch-visual { position:fixed; width:30px; height:30px; background:#ff5f6d; border-radius:50%; top:0; left:0; pointer-events:none; opacity:0.7; transform:translate(-50%,-50%); display:none; z-index:300; }
-img, video { user-select:none; -webkit-user-drag:none; touch-action:none; }
 #note-display { position:fixed; top:10px; right:10px; color:#ff5f6d; font-size:18px; font-weight:bold; z-index:400; }
+img, video { user-select:none; -webkit-user-drag:none; touch-action:none; }
 </style>
 </head>
 <body>
@@ -56,9 +56,9 @@ img, video { user-select:none; -webkit-user-drag:none; touch-action:none; }
     <div class="dropdown" id="scale-dropdown">
       <label>Scale:</label>
       <select id="scale-select">
-        <option>Major</option><option>Minor</option><option>Dorian</option><option>Phrygian</option><option>Lydian</option>
-        <option>Mixolydian</option><option>Aeolian</option><option>Locrian</option><option>Harmonic Minor</option>
-        <option>Major Pentatonic</option><option>Minor Pentatonic</option>
+        <option>Major</option><option>Minor</option><option>Dorian</option><option>Phrygian</option>
+        <option>Lydian</option><option>Mixolydian</option><option>Aeolian</option><option>Locrian</option>
+        <option>Harmonic Minor</option><option>Major Pentatonic</option><option>Minor Pentatonic</option>
       </select>
     </div>
   </div>
@@ -84,12 +84,10 @@ img, video { user-select:none; -webkit-user-drag:none; touch-action:none; }
 <script src="https://cdn.jsdelivr.net/npm/tone@next/build/Tone.js"></script>
 <script src="media-list.js"></script>
 <script>
-// Global variables
+// Globals
 let postId=0,isLoading=false,voices={},maxVoices=1;
 let selectedInstrument='Synth',selectedScale='Major',selectedTonic='C';
 let enabledEffects={};
-
-// Scales
 const scales={
   Major:[0,2,4,5,7,9,11,12],
   Minor:[0,2,3,5,7,8,10,12],
@@ -117,16 +115,12 @@ for(const btnId in menuMap){
 document.getElementById('instrument-select').addEventListener('change',e=>selectedInstrument=e.target.value);
 document.getElementById('scale-select').addEventListener('change',e=>selectedScale=e.target.value);
 document.getElementById('tonic-select').addEventListener('change',e=>selectedTonic=e.target.value);
-
-// Only one effect
 document.querySelectorAll('.effect-toggle').forEach(cb=>{
   cb.addEventListener('change', e=>{
     if(e.target.checked){
       document.querySelectorAll('.effect-toggle').forEach(other=>{if(other!==e.target) other.checked=false;});
       enabledEffects={}; enabledEffects[e.target.value]=true;
-    } else {
-      enabledEffects[e.target.value]=false;
-    }
+    } else { enabledEffects[e.target.value]=false; }
   });
 });
 
@@ -136,58 +130,45 @@ const noteDisplay=document.getElementById('note-display');
 function showTouch(x,y){touchVisual.style.left=x+'px'; touchVisual.style.top=y+'px'; touchVisual.style.display='block';}
 function hideTouch(){touchVisual.style.display='none';}
 
-// Map y to note
+// Map y to note 2 octaves
 function yToNote(y){
   const norm=1-Math.min(Math.max(y/window.innerHeight,0),1);
   const scaleIntervals=scales[selectedScale];
   const totalSteps=scaleIntervals.length*2;
   const stepIndex=Math.floor(norm*totalSteps);
   const octave=3+Math.floor(stepIndex/scaleIntervals.length);
-  const noteIndex=stepIndex % scaleIntervals.length;
-  return selectedTonic+octave;
+  const noteIndex=stepIndex%scaleIntervals.length;
+  const noteName = Tone.Frequency(selectedTonic + '3').transpose(scaleIntervals[noteIndex]).toNote();
+  return noteName.replace(/\d+$/, octave);
 }
 function xToFilter(x){return Math.max(300,Math.min(5000,(x/window.innerWidth)*5000));}
 
-// Start/update/stop voice
+// Voice controls
 async function startVoice(id,x,y){
   await Tone.start();
   if(Object.keys(voices).length>=maxVoices) return;
   const note=yToNote(y);
   const filter=new Tone.Filter(xToFilter(x),'lowpass').toDestination();
-  let synth;
-  switch(selectedInstrument){
-    case 'AMSynth': synth=new Tone.AMSynth().connect(filter); break;
-    case 'FMSynth': synth=new Tone.FMSynth().connect(filter); break;
-    case 'MembraneSynth': synth=new Tone.MembraneSynth().connect(filter); break;
-    default: synth=new Tone.Synth().connect(filter);
-  }
-  for(const e in enabledEffects){
-    if(enabledEffects[e]){
-      let eff;
-      switch(e){
-        case 'Reverb': eff=new Tone.Reverb(2).toDestination(); synth.connect(eff); break;
-        case 'Chorus': eff=new Tone.Chorus(4,2.5,0.5).start().toDestination(); synth.connect(eff); break;
-        case 'Distortion': eff=new Tone.Distortion(0.4).toDestination(); synth.connect(eff); break;
-        case 'Tremolo': eff=new Tone.Tremolo(9,0.75).start().toDestination(); synth.connect(eff); break;
-        case 'Vibrato': eff=new Tone.Vibrato(5,0.1).start().toDestination(); synth.connect(eff); break;
-        case 'Delay': eff=new Tone.FeedbackDelay('8n',0.5).toDestination(); synth.connect(eff); break;
-      }
-    }
-  }
+  const synthClass={Synth:Tone.Synth,AMSynth:Tone.AMSynth,FMSynth:Tone.FMSynth,MembraneSynth:Tone.MembraneSynth}[selectedInstrument]||Tone.Synth;
+  const synth=new synthClass({oscillator:{type:'sine'}}).connect(filter);
+  if(enabledEffects.Reverb) synth.connect(new Tone.Reverb().toDestination());
+  else if(enabledEffects.Chorus) synth.connect(new Tone.Chorus().toDestination());
+  else if(enabledEffects.Distortion) synth.connect(new Tone.Distortion().toDestination());
+  else if(enabledEffects.Tremolo) synth.connect(new Tone.Tremolo().toDestination().start());
+  else if(enabledEffects.Vibrato) synth.connect(new Tone.Vibrato().toDestination().start());
+  else if(enabledEffects.Delay) synth.connect(new Tone.FeedbackDelay('8n').toDestination());
   synth.triggerAttack(note);
-  voices[id]={synth,filter,note};
+  voices[id]={synth,filter};
   noteDisplay.textContent=note;
 }
-
 function updateVoice(id,x,y){
   if(!voices[id]) return;
   const note=yToNote(y);
-  voices[id].synth.frequency.rampTo(Tone.Frequency(note).toFrequency(),0.05);
-  voices[id].filter.frequency.value=xToFilter(x);
-  voices[id].note=note;
+  const filterFreq=xToFilter(x);
+  voices[id].filter.frequency.value=filterFreq;
+  voices[id].synth.setNote(note);
   noteDisplay.textContent=note;
 }
-
 function stopVoice(id){
   if(!voices[id]) return;
   voices[id].synth.triggerRelease();
@@ -195,52 +176,41 @@ function stopVoice(id){
   noteDisplay.textContent='';
 }
 
-// Posts
-function generatePost(){ 
+// Post rendering
+function generatePost(){
   const names=['Emma','Liam','Olivia','Noah','Ava'];
   const texts=['Having a great day! 😊','Check out this amazing view! 🌅','Coffee time ☕','Working on something exciting! 🚀','Weekend vibes 🎉'];
-  let media=null; if(typeof mediaList!=='undefined' && mediaList.length>0 && Math.random()>0.5) media=mediaList[Math.floor(Math.random()*mediaList.length)];
+  let media=null;
+  if(typeof mediaList!=='undefined' && mediaList.length>0 && Math.random()>0.5) media=mediaList[Math.floor(Math.random()*mediaList.length)];
   return {id:postId++,name:names[Math.floor(Math.random()*names.length)],text:texts[Math.floor(Math.random()*texts.length)],time:'2 hours ago',media};
 }
-function renderMedia(filePath){
-  const ext=filePath.split('.').pop().toLowerCase();
-  if(["jpg","jpeg","png"].includes(ext)) return `<div style="margin-top:10px;"><img src="${filePath}" alt="Post media" style="width:100%;border-radius:8px;"></div>`;
-  if(ext==='mp4') return `<div style="margin-top:10px;"><video src="${filePath}" controls style="width:100%;border-radius:8px;"></video></div>`;
-  return '';
-}
+function renderMedia(filePath){const ext=filePath.split('.').pop().toLowerCase(); if(['jpg','jpeg','png'].includes(ext)) return `<div style="margin-top:10px;"><img src="${filePath}" alt="Post media" style="width:100%;border-radius:8px;"></div>`; else if(ext==='mp4') return `<div style="margin-top:10px;"><video src="${filePath}" controls style="width:100%;border-radius:8px;"></video></div>`; else return '';}
 function createPost(postData){
   const postDiv=document.createElement('div'); postDiv.className='post'; postDiv.dataset.postId=postData.id;
-  postDiv.innerHTML=`<div class="post-header"><div class="avatar">${postData.name[0]}</div><div><div><strong>${postData.name}</strong></div><div style="font-size:12px;color:#999;">${postData.time}</div></div></div><div>${postData.text}</div>${postData.media?renderMedia(postData.media):''}<div class="post-actions"><button class="action-btn like-btn">👍 Like</button><button class="action-btn">💬 Comment</button><button class="action-btn">📤 Share</button></div>`;
+  postDiv.innerHTML=`<div class="post-header"><div class="avatar">${postData.name[0]}</div><div><div><strong>${postData.name}</strong></div><div style="font-size:12px;color:#999;">${postData.time}</div></div></div><div>${postData.text}</div>${postData.media?renderMedia(postData.media):''}<div class="post-actions"><button class="action-btn like-btn" role="button" tabindex="0" aria-pressed="false">👍 Like</button><button class="action-btn" role="button" tabindex="0">💬 Comment</button><button class="action-btn" role="button" tabindex="0">📤 Share</button></div>`;
+  const likeBtn=postDiv.querySelector('.like-btn'); likeBtn.addEventListener('click',()=>{ likeBtn.classList.toggle('liked'); const isLiked=likeBtn.classList.contains('liked'); likeBtn.setAttribute('aria-pressed',isLiked); likeBtn.textContent=isLiked?'❤️ Liked':'👍 Like'; });
   return postDiv;
 }
+function loadMore(){if(isLoading)return; isLoading=true; const container=document.getElementById('posts-container'); const skeletons=[]; for(let i=0;i<5;i++){const skeleton=document.createElement('div'); skeleton.className='skeleton-post'; container.appendChild(skeleton); skeletons.push(skeleton);} setTimeout(()=>{skeletons.forEach(skeleton=>{const postData=generatePost(); const postElement=createPost(postData); skeleton.replaceWith(postElement);}); isLoading=false;},600);}
+window.addEventListener('DOMContentLoaded',()=>{const sentinel=document.getElementById('sentinel'); const observer=new IntersectionObserver(entries=>{if(entries[0].isIntersecting) loadMore();},{rootMargin:'200px 0px'}); observer.observe(sentinel); loadMore(); setTimeout(()=>loadMore(),100);});
 
-function loadMore(){
-  if(isLoading) return; isLoading=true;
-  const container=document.getElementById('posts-container');
-  const feed=document.querySelector('.feed'); feed.setAttribute('aria-busy','true');
-  const skeletons=[]; for(let i=0;i<3;i++){ const s=document.createElement('div'); s.className='skeleton-post'; container.appendChild(s); skeletons.push(s);}
-  setTimeout(()=>{ skeletons.forEach(s=>{ const postData=generatePost(); const postElement=createPost(postData); s.replaceWith(postElement); }); feed.setAttribute('aria-busy','false'); isLoading=false; },800);
-}
-
-window.addEventListener('DOMContentLoaded',()=>{
-  const sentinel=document.getElementById('sentinel'); 
-  const observer=new IntersectionObserver(entries=>{ if(entries[0].isIntersecting) loadMore(); },{rootMargin:'200px 0px'});
-  observer.observe(sentinel); loadMore(); setTimeout(()=>loadMore(),100);
-
-  // Pointer Theremin with throttling
-  let lastUpdate=0;
-  document.addEventListener('pointerdown', async e=>{
-    if(e.target.closest('.post img, .post video')) return;
-    e.preventDefault(); await Tone.start();
-    startVoice('main', e.clientX, e.clientY); showTouch(e.clientX, e.clientY);
-  });
-  document.addEventListener('pointermove', e=>{
-    if(!voices['main']) return;
-    const now=performance.now(); if(now-lastUpdate<16) return; lastUpdate=now;
-    e.preventDefault(); updateVoice('main', e.clientX, e.clientY); showTouch(e.clientX, e.clientY);
-  });
-  document.addEventListener('pointerup', e=>{ stopVoice('main'); hideTouch(); });
+// Theremin pointer events
+let lastUpdate=0;
+document.addEventListener('pointerdown',async e=>{
+  if(e.target.closest('.header,.post img,.post video')) return;
+  e.preventDefault(); await Tone.start();
+  startVoice('main',e.clientX,e.clientY); showTouch(e.clientX,e.clientY);
 });
+document.addEventListener('pointermove',e=>{
+  if(!voices['main']) return;
+  const now=performance.now(); if(now-lastUpdate<16) return; lastUpdate=now;
+  if(e.target.closest('.header')) return;
+  e.preventDefault(); updateVoice('main',e.clientX,e.clientY); showTouch(e.clientX,e.clientY);
+});
+document.addEventListener('pointerup',e=>{ stopVoice('main'); hideTouch(); });
+document.addEventListener('pointercancel',e=>{ stopVoice('main'); hideTouch(); });
+window.addEventListener('blur',()=>{ stopVoice('main'); hideTouch(); });
+
 </script>
 </body>
 </html>
