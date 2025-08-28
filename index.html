@@ -7,7 +7,7 @@
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Billabong&display=swap');
 body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif; margin:0; background:#121212; color:#e0e0e0; overflow-x:hidden; }
-.header { background:#1f1f1f; padding:10px 10px; box-shadow:0 1px 3px rgba(0,0,0,0.7); position:sticky; top:0; z-index:100; display:flex; align-items:center; gap:5px; flex-wrap:wrap; }
+.header { background:#1f1f1f; padding:10px; box-shadow:0 1px 3px rgba(0,0,0,0.7); position:sticky; top:0; z-index:100; display:flex; align-items:center; gap:5px; flex-wrap:wrap; }
 .header h1 { font-family:'Billabong',cursive; font-size:32px; color:#e0e0e0; margin:0; flex:1; }
 .menu-btn { background:none;border:none;color:#e0e0e0;font-size:22px;cursor:pointer; }
 .dropdown { display:none; position:absolute; top:40px; left:0; background:#1f1f1f; padding:10px; border-radius:8px; z-index:200; max-width:180px; }
@@ -57,7 +57,10 @@ img, video { user-select:none; -webkit-user-drag:none; touch-action:none; }
       <label>Scale:</label>
       <select id="scale-select">
         <option>Major</option><option>Minor</option><option>Pentatonic</option>
+        <option>Major Pentatonic</option><option>Minor Pentatonic</option>
         <option>Harmonic Minor</option><option>Dorian</option><option>Phrygian</option>
+        <option>Lydian</option><option>Mixolydian</option><option>Aeolian</option>
+        <option>Locrian</option>
       </select>
     </div>
   </div>
@@ -86,34 +89,67 @@ img, video { user-select:none; -webkit-user-drag:none; touch-action:none; }
 let postId=0,isLoading=false;
 let voices={},maxVoices=1;
 let selectedInstrument='Synth',selectedScale='Pentatonic',selectedTonic='C';
-let enabledEffects={},currentWaveform='sine';
-const scales={ Major:[0,2,4,5,7,9,11,12], Minor:[0,2,3,5,7,8,10,12], Pentatonic:[0,2,4,7,9,12], 'Harmonic Minor':[0,2,3,5,7,8,11,12], Dorian:[0,2,3,5,7,9,10,12], Phrygian:[0,1,3,5,7,8,10,12] };
+let enabledEffects={};
+const scales = {
+    Major:[0,2,4,5,7,9,11,12],
+    Minor:[0,2,3,5,7,8,10,12],
+    Dorian:[0,2,3,5,7,9,10,12],
+    Phrygian:[0,1,3,5,7,8,10,12],
+    Lydian:[0,2,4,6,7,9,11,12],
+    Mixolydian:[0,2,4,5,7,9,10,12],
+    Aeolian:[0,2,3,5,7,8,10,12],
+    Locrian:[0,1,3,5,6,8,10,12],
+    'Harmonic Minor':[0,2,3,5,7,8,11,12],
+    'Major Pentatonic':[0,2,4,7,9,12],
+    'Minor Pentatonic':[0,3,5,7,10,12]
+};
+
 const menuMap={'menu-instr':'instr-dropdown','menu-effects':'effects-dropdown','menu-scale':'scale-dropdown','menu-tonic':'tonic-dropdown'};
-for(const btnId in menuMap){ const btn=document.getElementById(btnId); const dd=document.getElementById(menuMap[btnId]); btn.addEventListener('click',()=>{ dd.style.display=dd.style.display==='none'?'block':'none'; }); }
+for(const btnId in menuMap){
+    const btn=document.getElementById(btnId);
+    const dd=document.getElementById(menuMap[btnId]);
+    btn.addEventListener('click',()=>{
+        for(const otherId in menuMap){
+            if(otherId!==btnId) document.getElementById(menuMap[otherId]).style.display='none';
+        }
+        dd.style.display = dd.style.display==='none'?'block':'none';
+    });
+}
+
 document.getElementById('instrument-select').addEventListener('change',e=>selectedInstrument=e.target.value);
 document.getElementById('scale-select').addEventListener('change',e=>selectedScale=e.target.value);
 document.getElementById('tonic-select').addEventListener('change',e=>selectedTonic=e.target.value);
-document.querySelectorAll('.effect-toggle').forEach(cb=>cb.addEventListener('change',e=>{enabledEffects[e.target.value]=e.target.checked;}));
+
+// One effect at a time
+document.querySelectorAll('.effect-toggle').forEach(cb=>{
+    cb.addEventListener('change', e=>{
+        if(e.target.checked){
+            document.querySelectorAll('.effect-toggle').forEach(other=>{if(other!==e.target) other.checked=false;});
+            enabledEffects = {}; enabledEffects[e.target.value]=true;
+        } else {
+            enabledEffects[e.target.value]=false;
+        }
+    });
+});
 
 const isMobile=/Mobi|Android/i.test(navigator.userAgent);
 const touchVisuals=document.getElementById('touch-visuals');
 const noteDisplay=document.getElementById('note-display');
 
 function showTouch(id,x,y){
-  const c=document.createElement('div');
-  c.id='tv-'+id; c.style.position='absolute'; c.style.width='30px'; c.style.height='30px';
-  c.style.background='#ff5f6d'; c.style.borderRadius='50%';
-  c.style.left=(x-15)+'px'; c.style.top=(y-15)+'px'; c.style.opacity='0.7';
-  c.style.pointerEvents='none'; touchVisuals.appendChild(c);
+  const c=document.createElement('div'); c.id='tv-'+id; c.style.position='absolute';
+  c.style.width='30px'; c.style.height='30px'; c.style.background='#ff5f6d';
+  c.style.borderRadius='50%'; c.style.left=(x-15)+'px'; c.style.top=(y-15)+'px';
+  c.style.opacity='0.7'; c.style.pointerEvents='none'; touchVisuals.appendChild(c);
   setTimeout(()=>c.remove(),500);
 }
 
 function yToNote(y){
     const norm = 1 - Math.min(Math.max(y / window.innerHeight,0),1);
     const scaleIntervals = scales[selectedScale];
-    const totalSteps = scaleIntervals.length * 2; // 2 octaves
-    const stepIndex = Math.floor(norm * (totalSteps-1));
-    const octaveShift = Math.floor(stepIndex / scaleIntervals.length) * 12;
+    const totalSteps = scaleIntervals.length * 2;
+    const stepIndex = Math.floor(norm*(totalSteps-1));
+    const octaveShift = Math.floor(stepIndex/scaleIntervals.length)*12;
     const scaleStep = scaleIntervals[stepIndex % scaleIntervals.length];
     const tonicMidi = Tone.Frequency(selectedTonic+'3').toMidi();
     const noteMidi = tonicMidi + scaleStep + octaveShift;
@@ -122,7 +158,7 @@ function yToNote(y){
 
 function xToFilter(x){
     const norm = Math.min(Math.max(x/window.innerWidth,0),1);
-    return 200 + norm * (8000-200);
+    return 200 + norm*(8000-200);
 }
 
 function updateNoteDisplay(note){ noteDisplay.textContent=note; }
@@ -133,62 +169,105 @@ function createSynthWithEffects(){
     case 'AMSynth': synth=new Tone.AMSynth(); break;
     case 'FMSynth': synth=new Tone.FMSynth(); break;
     case 'MembraneSynth': synth=new Tone.MembraneSynth(); break;
-    default: synth=new Tone.Synth({oscillator:{type:currentWaveform}});
+    default: synth=new Tone.Synth({oscillator:{type:'sine'}});
   }
   let lastNode=synth;
-  if(!isMobile){
-    if(enabledEffects['Reverb']) { const eff=new Tone.Reverb(2); lastNode.connect(eff); lastNode=eff; }
-    if(enabledEffects['Chorus']) { const eff=new Tone.Chorus(4,2.5,0.5).start(); lastNode.connect(eff); lastNode=eff; }
-    if(enabledEffects['Distortion']) { const eff=new Tone.Distortion(0.4); lastNode.connect(eff); lastNode=eff; }
-    if(enabledEffects['Tremolo']) { const eff=new Tone.Tremolo(9,0.75).start(); lastNode.connect(eff); lastNode=eff; }
-    if(enabledEffects['Vibrato']) { const eff=new Tone.Vibrato(5,0.1).start(); lastNode.connect(eff); lastNode=eff; }
-    if(enabledEffects['Delay']) { const eff=new Tone.FeedbackDelay("8n",0.5); lastNode.connect(eff); lastNode=eff; }
+  for(const effect in enabledEffects){
+    if(enabledEffects[effect]){
+      switch(effect){
+        case 'Reverb': const r=new Tone.Reverb(2); lastNode.connect(r); lastNode=r; break;
+        case 'Chorus': const c=new Tone.Chorus(4,2.5,0.5).start(); lastNode.connect(c); lastNode=c; break;
+        case 'Distortion': const d=new Tone.Distortion(0.4); lastNode.connect(d); lastNode=d; break;
+        case 'Tremolo': const t=new Tone.Tremolo(9,0.75).start(); lastNode.connect(t); lastNode=t; break;
+        case 'Vibrato': const v=new Tone.Vibrato(5,0.1).start(); lastNode.connect(v); lastNode=v; break;
+        case 'Delay': const l=new Tone.FeedbackDelay("8n",0.5); lastNode.connect(l); lastNode=l; break;
+      }
+    }
   }
   lastNode.toDestination();
   return synth;
 }
 
-let lastUpdate=0;
 function startVoice(id,x,y){
   if(voices[id]) return;
   const synth = createSynthWithEffects();
   const filter = new Tone.Filter(xToFilter(x),'lowpass').toDestination();
   synth.connect(filter);
-  const note = yToNote(y);
+  const note=yToNote(y);
   synth.triggerAttack(note);
-  voices[id] = {synth, filter};
+  voices[id]={synth,filter,note};
   updateNoteDisplay(note);
-  showTouch(id,x,y);
 }
 
 function updateVoice(id,x,y){
-  const v = voices[id]; if(!v) return;
-  const note = yToNote(y);
-  v.synth.frequency.value = Tone.Frequency(note);
-  v.filter.frequency.value = xToFilter(x);
+  if(!voices[id]) return;
+  const note=yToNote(y);
+  const filter=xToFilter(x);
+  voices[id].synth.frequency.rampTo(Tone.Frequency(note).toFrequency(),0.05);
+  voices[id].filter.frequency.value=filter;
+  voices[id].note=note;
   updateNoteDisplay(note);
 }
 
 function stopVoice(id){
-  const v = voices[id]; if(!v) return;
-  v.synth.triggerRelease(); delete voices[id]; noteDisplay.textContent='';
+  if(!voices[id]) return;
+  voices[id].synth.triggerRelease();
+  delete voices[id];
+  noteDisplay.textContent='';
 }
 
-document.addEventListener('pointerdown',e=>{
-  if(e.target.closest('.post img, .post video')) return;
-  Tone.start(); startVoice('main',e.clientX,e.clientY);
-});
-document.addEventListener('pointermove',e=>{ updateVoice('main',e.clientX,e.clientY); });
-document.addEventListener('pointerup',e=>{ stopVoice('main'); });
+// 🔹 Post generation
+function generatePost(){
+  const names=['Emma','Liam','Olivia','Noah','Ava'];
+  const texts=['Having a great day! 😊','Check out this amazing view! 🌅','Coffee time ☕','Working on something exciting! 🚀','Weekend vibes 🎉'];
+  let media=null;
+  if(typeof mediaList!=='undefined' && mediaList.length>0 && Math.random()>0.5) media=mediaList[Math.floor(Math.random()*mediaList.length)];
+  return {id:postId++,name:names[Math.floor(Math.random()*names.length)],text:texts[Math.floor(Math.random()*texts.length)],time:'2 hours ago',media};
+}
 
-// --- Posts ---
-function generatePost(){ const names=['Emma','Liam','Olivia','Noah','Ava']; const texts=['Having a great day! 😊','Check out this amazing view! 🌅','Coffee time ☕','Working on something exciting! 🚀','Weekend vibes 🎉']; let media=null; if(typeof mediaList!=='undefined' && mediaList.length>0 && Math.random()>0.5) media=mediaList[Math.floor(Math.random()*mediaList.length)]; return {id:postId++,name:names[Math.floor(Math.random()*names.length)],text:texts[Math.floor(Math.random()*texts.length)],time:'2 hours ago',media}; }
-function renderMedia(filePath){ const ext=filePath.split('.').pop().toLowerCase(); if(['jpg','jpeg','png'].includes(ext)) return `<div style="margin-top:10px;"><img src="${filePath}" alt="Post media" style="width:100%;border-radius:8px;"></div>`; if(ext==='mp4') return `<div style="margin-top:10px;"><video src="${filePath}" controls style="width:100%;border-radius:8px;"></video></div>`; return ''; }
-function createPost(postData){ const postDiv=document.createElement('div'); postDiv.className='post'; postDiv.dataset.postId=postData.id; postDiv.innerHTML=`<div class="post-header"><div class="avatar">${postData.name[0]}</div><div><div><strong>${postData.name}</strong></div><div style="font-size:12px;color:#999;">${postData.time}</div></div></div><div>${postData.text}</div>${postData.media?renderMedia(postData.media):''}<div class="post-actions"><button class="action-btn like-btn" role="button" tabindex="0" aria-pressed="false">👍 Like</button><button class="action-btn" role="button" tabindex="0">💬 Comment</button><button class="action-btn" role="button" tabindex="0">📤 Share</button></div>`; return postDiv; }
-function loadMore(){ if(isLoading) return; isLoading=true; const container=document.getElementById('posts-container'); const feed=document.querySelector('.feed'); feed.setAttribute('aria-busy','true'); const skeletons=[]; for(let i=0;i<5;i++){ const s=document.createElement('div'); s.className='skeleton-post'; container.appendChild(s); skeletons.push(s);} setTimeout(()=>{ skeletons.forEach(s=>{ const postData=generatePost(); const postElement=createPost(postData); s.replaceWith(postElement); }); feed.setAttribute('aria-busy','false'); isLoading=false; },800); }
+function renderMedia(filePath){
+  const ext=filePath.split('.').pop().toLowerCase();
+  if(["jpg","jpeg","png"].includes(ext)) return `<div style="margin-top:10px;"><img src="${filePath}" alt="Post media" style="width:100%;border-radius:8px;"></div>`;
+  if(ext==='mp4') return `<div style="margin-top:10px;"><video src="${filePath}" controls style="width:100%;border-radius:8px;"></video></div>`;
+  return '';
+}
+
+function createPost(postData){
+  const postDiv=document.createElement('div'); postDiv.className='post'; postDiv.dataset.postId=postData.id;
+  postDiv.innerHTML=`<div class="post-header"><div class="avatar">${postData.name[0]}</div><div><div><strong>${postData.name}</strong></div><div style="font-size:12px;color:#999;">${postData.time}</div></div></div><div>${postData.text}</div>${postData.media?renderMedia(postData.media):''}<div class="post-actions"><button class="action-btn like-btn" role="button" tabindex="0" aria-pressed="false">👍 Like</button><button class="action-btn" role="button" tabindex="0">💬 Comment</button><button class="action-btn" role="button" tabindex="0">📤 Share</button></div>`;
+  return postDiv;
+}
+
+function loadMore(){
+  if(isLoading) return; isLoading=true;
+  const container=document.getElementById('posts-container');
+  const feed=document.querySelector('.feed'); feed.setAttribute('aria-busy','true');
+  const skeletons=[];
+  for(let i=0;i<5;i++){ const s=document.createElement('div'); s.className='skeleton-post'; container.appendChild(s); skeletons.push(s);}
+  setTimeout(()=>{
+    skeletons.forEach(s=>{
+      const postData=generatePost();
+      const postElement=createPost(postData);
+      s.replaceWith(postElement);
+    });
+    feed.setAttribute('aria-busy','false'); isLoading=false;
+  },800);
+}
 
 window.addEventListener('DOMContentLoaded',()=>{
-  const sentinel=document.getElementById('sentinel'); const observer=new IntersectionObserver(entries=>{ if(entries[0].isIntersecting) loadMore(); },{rootMargin:'200px 0px'}); observer.observe(sentinel); loadMore(); setTimeout(()=>loadMore(),100);
+  const sentinel=document.getElementById('sentinel'); 
+  const observer=new IntersectionObserver(entries=>{ if(entries[0].isIntersecting) loadMore(); },{rootMargin:'200px 0px'});
+  observer.observe(sentinel); loadMore(); setTimeout(()=>loadMore(),100);
+
+  // Touch Theremin
+  document.addEventListener('pointerdown', e=>{
+    if(e.target.closest('.post img, .post video')) return;
+    e.preventDefault(); Tone.start(); startVoice('main',e.clientX,e.clientY); showTouch('main',e.clientX,e.clientY);
+  });
+  document.addEventListener('pointermove', e=>{
+    if(voices['main']){ e.preventDefault(); updateVoice('main',e.clientX,e.clientY); showTouch('main',e.clientX,e.clientY);}
+  });
+  document.addEventListener('pointerup', e=>{ stopVoice('main'); });
 });
 </script>
 </body>
