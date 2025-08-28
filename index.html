@@ -6,7 +6,7 @@
 <title>Melodic Feed Theremin</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Billabong&display=swap');
-body, .feed { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif; margin:0; background:#121212; color:#e0e0e0; overflow-x:hidden; touch-action:none; }
+body, .feed { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif; margin:0; background:#121212; color:#e0e0e0; overflow-x:hidden; }
 .header { background:#1f1f1f; padding:10px; box-shadow:0 1px 3px rgba(0,0,0,0.7); position:sticky; top:0; z-index:100; display:flex; align-items:center; gap:5px; flex-wrap:wrap; }
 .header h1 { font-family:'Billabong',cursive; font-size:32px; color:#e0e0e0; margin:0; flex:1; }
 .menu-btn { background:none;border:none;color:#e0e0e0;font-size:22px;cursor:pointer; }
@@ -84,7 +84,7 @@ img, video { user-select:none; -webkit-user-drag:none; touch-action:none; }
 <script src="https://cdn.jsdelivr.net/npm/tone@next/build/Tone.js"></script>
 <script src="media-list.js"></script>
 <script>
-// Globals
+// All previous code unchanged up to theremin
 let postId=0,isLoading=false,voices={},maxVoices=1;
 let selectedInstrument='Synth',selectedScale='Major',selectedTonic='C';
 let enabledEffects={};
@@ -176,41 +176,40 @@ function stopVoice(id){
   noteDisplay.textContent='';
 }
 
-// Post rendering
-function generatePost(){
-  const names=['Emma','Liam','Olivia','Noah','Ava'];
-  const texts=['Having a great day! 😊','Check out this amazing view! 🌅','Coffee time ☕','Working on something exciting! 🚀','Weekend vibes 🎉'];
-  let media=null;
-  if(typeof mediaList!=='undefined' && mediaList.length>0 && Math.random()>0.5) media=mediaList[Math.floor(Math.random()*mediaList.length)];
-  return {id:postId++,name:names[Math.floor(Math.random()*names.length)],text:texts[Math.floor(Math.random()*texts.length)],time:'2 hours ago',media};
-}
+// Post rendering (unchanged)
+function generatePost(){const names=['Emma','Liam','Olivia','Noah','Ava']; const texts=['Having a great day! 😊','Check out this amazing view! 🌅','Coffee time ☕','Working on something exciting! 🚀','Weekend vibes 🎉']; let media=null; if(typeof mediaList!=='undefined' && mediaList.length>0 && Math.random()>0.5) media=mediaList[Math.floor(Math.random()*mediaList.length)]; return {id:postId++,name:names[Math.floor(Math.random()*names.length)],text:texts[Math.floor(Math.random()*texts.length)],time:'2 hours ago',media};}
 function renderMedia(filePath){const ext=filePath.split('.').pop().toLowerCase(); if(['jpg','jpeg','png'].includes(ext)) return `<div style="margin-top:10px;"><img src="${filePath}" alt="Post media" style="width:100%;border-radius:8px;"></div>`; else if(ext==='mp4') return `<div style="margin-top:10px;"><video src="${filePath}" controls style="width:100%;border-radius:8px;"></video></div>`; else return '';}
-function createPost(postData){
-  const postDiv=document.createElement('div'); postDiv.className='post'; postDiv.dataset.postId=postData.id;
-  postDiv.innerHTML=`<div class="post-header"><div class="avatar">${postData.name[0]}</div><div><div><strong>${postData.name}</strong></div><div style="font-size:12px;color:#999;">${postData.time}</div></div></div><div>${postData.text}</div>${postData.media?renderMedia(postData.media):''}<div class="post-actions"><button class="action-btn like-btn" role="button" tabindex="0" aria-pressed="false">👍 Like</button><button class="action-btn" role="button" tabindex="0">💬 Comment</button><button class="action-btn" role="button" tabindex="0">📤 Share</button></div>`;
-  const likeBtn=postDiv.querySelector('.like-btn'); likeBtn.addEventListener('click',()=>{ likeBtn.classList.toggle('liked'); const isLiked=likeBtn.classList.contains('liked'); likeBtn.setAttribute('aria-pressed',isLiked); likeBtn.textContent=isLiked?'❤️ Liked':'👍 Like'; });
-  return postDiv;
-}
+function createPost(postData){const postDiv=document.createElement('div'); postDiv.className='post'; postDiv.dataset.postId=postData.id; postDiv.innerHTML=`<div class="post-header"><div class="avatar">${postData.name[0]}</div><div><div><strong>${postData.name}</strong></div><div style="font-size:12px;color:#999;">${postData.time}</div></div></div><div>${postData.text}</div>${postData.media?renderMedia(postData.media):''}<div class="post-actions"><button class="action-btn like-btn" role="button" tabindex="0" aria-pressed="false">👍 Like</button><button class="action-btn" role="button" tabindex="0">💬 Comment</button><button class="action-btn" role="button" tabindex="0">📤 Share</button></div>`; const likeBtn=postDiv.querySelector('.like-btn'); likeBtn.addEventListener('click',()=>{ likeBtn.classList.toggle('liked'); const isLiked=likeBtn.classList.contains('liked'); likeBtn.setAttribute('aria-pressed',isLiked); likeBtn.textContent=isLiked?'❤️ Liked':'👍 Like'; }); return postDiv;}
 function loadMore(){if(isLoading)return; isLoading=true; const container=document.getElementById('posts-container'); const skeletons=[]; for(let i=0;i<5;i++){const skeleton=document.createElement('div'); skeleton.className='skeleton-post'; container.appendChild(skeleton); skeletons.push(skeleton);} setTimeout(()=>{skeletons.forEach(skeleton=>{const postData=generatePost(); const postElement=createPost(postData); skeleton.replaceWith(postElement);}); isLoading=false;},600);}
 window.addEventListener('DOMContentLoaded',()=>{const sentinel=document.getElementById('sentinel'); const observer=new IntersectionObserver(entries=>{if(entries[0].isIntersecting) loadMore();},{rootMargin:'200px 0px'}); observer.observe(sentinel); loadMore(); setTimeout(()=>loadMore(),100);});
 
-// Theremin pointer events
-let lastUpdate=0;
-document.addEventListener('pointerdown',async e=>{
-  if(e.target.closest('.header,.post img,.post video')) return;
-  e.preventDefault(); await Tone.start();
-  startVoice('main',e.clientX,e.clientY); showTouch(e.clientX,e.clientY);
-});
-document.addEventListener('pointermove',e=>{
-  if(!voices['main']) return;
-  const now=performance.now(); if(now-lastUpdate<16) return; lastUpdate=now;
-  if(e.target.closest('.header')) return;
-  e.preventDefault(); updateVoice('main',e.clientX,e.clientY); showTouch(e.clientX,e.clientY);
-});
-document.addEventListener('pointerup',e=>{ stopVoice('main'); hideTouch(); });
-document.addEventListener('pointercancel',e=>{ stopVoice('main'); hideTouch(); });
-window.addEventListener('blur',()=>{ stopVoice('main'); hideTouch(); });
-
+// Mobile-friendly simultaneous scroll + theremin
+let currentTouchId=null;
+document.addEventListener('touchstart', async e => {
+  const touch = e.changedTouches[0];
+  if(touch.target.closest('.header,.post img,.post video')) return;
+  currentTouchId = touch.identifier;
+  await Tone.start();
+  startVoice('main', touch.clientX, touch.clientY);
+  showTouch(touch.clientX, touch.clientY);
+},{passive:true});
+document.addEventListener('touchmove', e => {
+  if(currentTouchId===null) return;
+  const touch = [...e.changedTouches].find(t=>t.identifier===currentTouchId);
+  if(!touch) return;
+  updateVoice('main', touch.clientX, touch.clientY);
+  showTouch(touch.clientX, touch.clientY);
+},{passive:true});
+document.addEventListener('touchend', e => {
+  const touch = [...e.changedTouches].find(t=>t.identifier===currentTouchId);
+  if(!touch) return;
+  stopVoice('main'); hideTouch(); currentTouchId=null;
+},{passive:true});
+document.addEventListener('touchcancel', e => {
+  const touch = [...e.changedTouches].find(t=>t.identifier===currentTouchId);
+  if(!touch) return;
+  stopVoice('main'); hideTouch(); currentTouchId=null;
+},{passive:true});
 </script>
 </body>
 </html>
