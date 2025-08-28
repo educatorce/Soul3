@@ -92,6 +92,7 @@ let voices={},maxVoices=1;
 let selectedInstrument='Synth',selectedScale='Pentatonic',selectedTonic='C';
 let enabledEffects={},currentWaveform='sine';
 const scales={ Major:[0,2,4,5,7,9,11,12], Minor:[0,2,3,5,7,8,10,12], Pentatonic:[0,2,4,7,9,12], 'Harmonic Minor':[0,2,3,5,7,8,11,12], Dorian:[0,2,3,5,7,9,10,12], Phrygian:[0,1,3,5,7,8,10,12] };
+
 const menuMap={'menu-instr':'instr-dropdown','menu-effects':'effects-dropdown','menu-scale':'scale-dropdown','menu-tonic':'tonic-dropdown'};
 for(const btnId in menuMap){ const btn=document.getElementById(btnId); const dd=document.getElementById(menuMap[btnId]); btn.addEventListener('click',()=>{ dd.style.display=dd.style.display==='none'?'block':'none'; }); }
 document.getElementById('instrument-select').addEventListener('change',e=>selectedInstrument=e.target.value);
@@ -112,8 +113,15 @@ function showTouch(id,x,y){
   setTimeout(()=>c.remove(),500);
 }
 
-function initAudio(){ Tone.start(); }
-function yToNote(y){ const norm=1-Math.min(Math.max(y/window.innerHeight,0),1); const scale=scales[selectedScale]; const noteIndex=Math.floor(norm*(scale.length-1)); return selectedTonic+scale[noteIndex]; }
+// --- Note calculation starting at C3 ---
+function yToNote(y){
+    const norm = 1 - Math.min(Math.max(y / window.innerHeight, 0), 1);
+    const scaleIntervals = scales[selectedScale];
+    const index = Math.floor(norm * (scaleIntervals.length - 1));
+    const tonicMidi = Tone.Frequency(selectedTonic + "3").toMidi();
+    const noteMidi = tonicMidi + scaleIntervals[index];
+    return Tone.Frequency(noteMidi, "midi").toNote();
+}
 function xToFilter(x){ const norm=Math.min(Math.max(x/window.innerWidth,0),1); return 200+norm*(8000-200); }
 
 function updateNoteDisplay(note){ noteDisplay.textContent=note; }
@@ -128,7 +136,6 @@ function startVoice(id,x,y){
     case 'MembraneSynth': synth=new Tone.MembraneSynth().toDestination(); break;
     default: synth=new Tone.Synth({oscillator:{type:currentWaveform}}).toDestination();
   }
-  // optional effects (skip on mobile for performance)
   if(!isMobile){
     if(enabledEffects['Reverb']) { const eff=new Tone.Reverb(2).toDestination(); synth.connect(eff); synth=eff; }
     if(enabledEffects['Chorus']) { const eff=new Tone.Chorus().toDestination().start(); synth.connect(eff); synth=eff; }
@@ -163,22 +170,13 @@ function stopVoice(id){
   noteDisplay.textContent='';
 }
 
-// Prevent interaction with images/videos
 document.addEventListener('pointerdown',e=>{
   if(e.target.closest('.post img, .post video')) return;
-  initAudio(); startVoice('main',e.clientX,e.clientY);
+  Tone.start(); startVoice('main',e.clientX,e.clientY);
 });
 document.addEventListener('pointermove',e=>{ updateVoice('main',e.clientX,e.clientY); });
 document.addEventListener('pointerup',e=>{ stopVoice('main'); });
 
-// ---- Posts generation ----
+// --- Posts generation ---
 function generatePost(){ const names=['Emma','Liam','Olivia','Noah','Ava']; const texts=['Having a great day! 😊','Check out this amazing view! 🌅','Coffee time ☕','Working on something exciting! 🚀','Weekend vibes 🎉']; let media=null; if(typeof mediaList!=='undefined' && mediaList.length>0 && Math.random()>0.5) media=mediaList[Math.floor(Math.random()*mediaList.length)]; return {id:postId++,name:names[Math.floor(Math.random()*names.length)],text:texts[Math.floor(Math.random()*texts.length)],time:'2 hours ago',media}; }
-function renderMedia(filePath){ const ext=filePath.split('.').pop().toLowerCase(); if(['jpg','jpeg','png'].includes(ext)) return `<div style="margin-top:10px;"><img src="${filePath}" alt="Post media" style="width:100%; border-radius:8px;"></div>`; if(ext==='mp4') return `<div style="margin-top:10px;"><video src="${filePath}" controls style="width:100%; border-radius:8px;"></video></div>`; return ''; }
-function createPost(postData){ const postDiv=document.createElement('div'); postDiv.className='post'; postDiv.dataset.postId=postData.id; postDiv.innerHTML=`<div class="post-header"><div class="avatar">${postData.name[0]}</div><div><div><strong>${postData.name}</strong></div><div style="font-size:12px;color:#999;">${postData.time}</div></div></div><div>${postData.text}</div>${postData.media?renderMedia(postData.media):''}<div class="post-actions"><button class="action-btn like-btn" role="button" tabindex="0" aria-pressed="false">👍 Like</button><button class="action-btn" role="button" tabindex="0">💬 Comment</button><button class="action-btn" role="button" tabindex="0">📤 Share</button></div>`; const likeBtn=postDiv.querySelector('.like-btn'); likeBtn.addEventListener('click',()=>{ likeBtn.classList.toggle('liked'); const liked=likeBtn.classList.contains('liked'); likeBtn.setAttribute('aria-pressed',liked); likeBtn.textContent=liked?'❤️ Liked':'👍 Like'; }); return postDiv; }
-function loadMore(){ if(isLoading) return; isLoading=true; const container=document.getElementById('posts-container'); const feed=document.querySelector('.feed'); feed.setAttribute('aria-busy','true'); const skeletons=[]; for(let i=0;i<5;i++){ const s=document.createElement('div'); s.className='skeleton-post'; container.appendChild(s); skeletons.push(s);} setTimeout(()=>{ skeletons.forEach(s=>{ const postData=generatePost(); const postElement=createPost(postData); s.replaceWith(postElement); }); feed.setAttribute('aria-busy','false'); isLoading=false; },800); }
-window.addEventListener('DOMContentLoaded',()=>{
-  const sentinel=document.getElementById('sentinel'); const observer=new IntersectionObserver(entries=>{ if(entries[0].isIntersecting) loadMore(); },{rootMargin:'200px 0px'}); observer.observe(sentinel); loadMore(); setTimeout(()=>loadMore(),100);
-});
-</script>
-</body>
-</html>
+function renderMedia(filePath){ const ext=filePath.split('.').pop().toLowerCase(); if(['jpg','jpeg','png'].includes
