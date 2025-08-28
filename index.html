@@ -19,85 +19,74 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helv
 .action-btn.liked { color:#ed4956; }
 .skeleton-post { background:#1e1e1e; border-radius:8px; padding:15px; margin-bottom:15px; height:150px; animation:pulse 1.5s infinite; border:1px solid #333; }
 @keyframes pulse { 0%{opacity:0.6} 50%{opacity:1} 100%{opacity:0.6} }
+/* Instrument menu styling */
+.instrument-menu { position:fixed; bottom:20px; left:20px; background:#1f1f1f; padding:10px 15px; border-radius:10px; color:#e0e0e0; z-index:200; }
+.instrument-menu select { margin-left:10px; padding:4px; }
 </style>
 </head>
 <body>
 <div class="header"><h1>🎵 MeloFeed</h1></div>
+
 <div class="feed" role="feed" aria-live="polite">
     <div id="posts-container"></div>
     <div id="sentinel"></div>
 </div>
 
+<div class="instrument-menu">
+    <label for="instrument-select">Instrument:</label>
+    <select id="instrument-select">
+        <option value="Synth">Synth (Sine)</option>
+        <option value="AMSynth">AMSynth</option>
+        <option value="FMSynth">FMSynth</option>
+        <option value="MembraneSynth">MembraneSynth</option>
+    </select>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/tone@next/build/Tone.js"></script>
 <script src="media-list.js"></script>
 <script>
-let postId = 0, isLoading = false, currentWaveform = 'sine';
-const voices = {}; // pointerId -> {synth, filter}
-const maxVoices = 2;
+let postId = 0, isLoading = false, currentWaveform = 'sine', selectedInstrument = 'Synth';
+const voices = {}, maxVoices = 2;
 const basePitches = ['C4','D#4','F4','G4','A#4','C5','D#5','F5','G5','A#5'];
 
-async function initAudio(){
-    await Tone.start(); // unlock audio on first gesture
-}
+const instrumentSelect = document.getElementById('instrument-select');
+instrumentSelect.addEventListener('change', e => { selectedInstrument = e.target.value; });
 
-function yToNote(y){
-    const norm = 1 - Math.min(Math.max(y/window.innerHeight,0),1);
-    const idx = Math.floor(norm*(basePitches.length-1));
-    return basePitches[idx];
-}
-function xToFilter(x){
-    const norm = Math.min(Math.max(x/window.innerWidth,0),1);
-    return 200 + norm*(8000-200);
-}
+async function initAudio(){ await Tone.start(); }
+
+function yToNote(y){ const norm = 1 - Math.min(Math.max(y/window.innerHeight,0),1); return basePitches[Math.floor(norm*(basePitches.length-1))]; }
+function xToFilter(x){ const norm = Math.min(Math.max(x/window.innerWidth,0),1); return 200 + norm*(8000-200); }
 
 function startVoice(id,x,y){
     if(Object.keys(voices).length >= maxVoices) return;
-    if(voices[id]) return;
-    const synth = new Tone.Synth({ oscillator: { type: currentWaveform }, envelope:{ attack:0.01, decay:0.1, sustain:0.5, release:0.2 } }).toDestination();
+    if(voices[id]) return; // only play once per press
+    let synth;
+    switch(selectedInstrument){
+        case 'AMSynth': synth = new Tone.AMSynth({envelope:{attack:0.01, decay:0.1, sustain:0.5, release:0.2}}).toDestination(); break;
+        case 'FMSynth': synth = new Tone.FMSynth({envelope:{attack:0.01, decay:0.1, sustain:0.5, release:0.2}}).toDestination(); break;
+        case 'MembraneSynth': synth = new Tone.MembraneSynth({envelope:{attack:0.01, decay:0.1, sustain:0.5, release:0.2}}).toDestination(); break;
+        default: synth = new Tone.Synth({oscillator:{type:currentWaveform}, envelope:{attack:0.01, decay:0.1, sustain:0.5, release:0.2}}).toDestination();
+    }
     const filter = new Tone.Filter(xToFilter(x),"lowpass").toDestination();
     synth.connect(filter);
-    synth.triggerAttack(yToNote(y));
+    synth.triggerAttackRelease(yToNote(y), "8n"); // play only once
     voices[id] = { synth, filter };
 }
-function updateVoice(id,x,y){
-    const v = voices[id]; if(!v) return;
-    v.synth.frequency.value = Tone.Frequency(yToNote(y));
-    v.filter.frequency.value = xToFilter(x);
-}
-function stopVoice(id){
-    const v = voices[id]; if(!v) return;
-    v.synth.triggerRelease();
-    delete voices[id];
-}
 
-// Pointer events
+function stopVoice(id){ delete voices[id]; } // nothing to release, note already finished
+
+// pointer + touch events
 document.addEventListener('pointerdown', e => { initAudio(); startVoice(e.pointerId,e.clientX,e.clientY); });
-document.addEventListener('pointermove', e => updateVoice(e.pointerId,e.clientX,e.clientY));
-document.addEventListener('pointerup', e => stopVoice(e.pointerId));
-document.addEventListener('pointercancel', e => stopVoice(e.pointerId));
-document.addEventListener('lostpointercapture', e => stopVoice(e.pointerId));
+document.addEventListener('touchstart', e => { initAudio(); for(let t of e.changedTouches) startVoice(t.identifier,t.clientX,t.clientY); e.preventDefault(); }, {passive:false});
 
-// Touch events for mobile
-document.addEventListener('touchstart', e => { initAudio(); for(let t of e.changedTouches) startVoice(t.identifier,t.clientX,t.clientY); e.preventDefault(); }, { passive:false });
-document.addEventListener('touchmove', e => { for(let t of e.changedTouches) updateVoice(t.identifier,t.clientX,t.clientY); });
-document.addEventListener('touchend', e => { for(let t of e.changedTouches) stopVoice(t.identifier); });
-document.addEventListener('touchcancel', e => { for(let t of e.changedTouches) stopVoice(t.identifier); });
+// posts & media
+function renderMedia(path){ const ext=path.split('.').pop().toLowerCase();
+if(['jpg','jpeg','png'].includes(ext)) return `<div style="margin-top:10px;"><img src="${path}" alt="Post media" style="width:100%;border-radius:8px;"></div>`;
+if(ext==='mp4') return `<div style="margin-top:10px;"><video src="${path}" controls style="width:100%;border-radius:8px;"></video></div>`; return ''; }
 
-// Posts and media
-function renderMedia(path){
-    const ext=path.split('.').pop().toLowerCase();
-    if(['jpg','jpeg','png'].includes(ext)) return `<div style="margin-top:10px;"><img src="${path}" alt="Post media" style="width:100%;border-radius:8px;"></div>`;
-    if(ext==='mp4') return `<div style="margin-top:10px;"><video src="${path}" controls style="width:100%;border-radius:8px;"></video></div>`;
-    return '';
-}
-
-function generatePost(){
-    const names=['Emma','Liam','Olivia','Noah','Ava'];
-    const texts=['Having a great day! 😊','Check out this amazing view! 🌅','Coffee time ☕','Working on something exciting! 🚀','Weekend vibes 🎉'];
-    let media=null;
-    if(typeof mediaList!=='undefined' && mediaList.length>0 && Math.random()>0.5) media=mediaList[Math.floor(Math.random()*mediaList.length)];
-    return {id:postId++, name:names[Math.floor(Math.random()*names.length)], text:texts[Math.floor(Math.random()*texts.length)], time:'2 hours ago', media};
-}
+function generatePost(){ const names=['Emma','Liam','Olivia','Noah','Ava']; const texts=['Having a great day! 😊','Check out this amazing view! 🌅','Coffee time ☕','Working on something exciting! 🚀','Weekend vibes 🎉'];
+let media=null; if(typeof mediaList!=='undefined' && mediaList.length>0 && Math.random()>0.5) media=mediaList[Math.floor(Math.random()*mediaList.length)];
+return {id:postId++, name:names[Math.floor(Math.random()*names.length)], text:texts[Math.floor(Math.random()*texts.length)], time:'2 hours ago', media}; }
 
 function createPost(postData){
     const postDiv=document.createElement('div'); postDiv.className='post'; postDiv.dataset.postId=postData.id;
@@ -115,14 +104,10 @@ function createPost(postData){
     return postDiv;
 }
 
-function loadMore(){if(isLoading) return; isLoading=true;
-    const container=document.getElementById('posts-container'); const feed=document.querySelector('.feed');
-    feed.setAttribute('aria-busy','true'); const skeletons=[];
-    for(let i=0;i<5;i++){const skeleton=document.createElement('div'); skeleton.className='skeleton-post'; container.appendChild(skeleton); skeletons.push(skeleton);}
-    setTimeout(()=>{
-        skeletons.forEach(s=>{const post=createPost(generatePost()); s.replaceWith(post);});
-        feed.setAttribute('aria-busy','false'); isLoading=false;
-    },300);
+function loadMore(){ if(isLoading) return; isLoading=true;
+    const container=document.getElementById('posts-container'); const feed=document.querySelector('.feed'); feed.setAttribute('aria-busy','true'); const skeletons=[];
+    for(let i=0;i<5;i++){ const skeleton=document.createElement('div'); skeleton.className='skeleton-post'; container.appendChild(skeleton); skeletons.push(skeleton);}
+    setTimeout(()=>{ skeletons.forEach(s=>{ const post=createPost(generatePost()); s.replaceWith(post); }); feed.setAttribute('aria-busy','false'); isLoading=false; },300);
 }
 
 window.addEventListener('DOMContentLoaded',()=>{
