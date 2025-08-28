@@ -170,8 +170,9 @@
 
         // Pentatonic scale notes (A minor pentatonic)
         const pentatonicNotes = [220, 261.63, 293.66, 329.63, 392, 440];
+        let osc, lowPassFilter, highPassFilter;
 
-        // Initialize audio on first user interaction
+        // Initialize audio context and oscillator
         function initAudio() {
             if (!audioContext) {
                 try {
@@ -179,41 +180,37 @@
                     masterGain = audioContext.createGain();
                     masterGain.connect(audioContext.destination);
                     masterGain.gain.value = 0.5;
+
+                    osc = audioContext.createOscillator();
+                    lowPassFilter = audioContext.createBiquadFilter();
+                    highPassFilter = audioContext.createBiquadFilter();
+
+                    lowPassFilter.type = 'lowpass';
+                    highPassFilter.type = 'highpass';
+
+                    osc.connect(lowPassFilter);
+                    lowPassFilter.connect(highPassFilter);
+                    highPassFilter.connect(masterGain);
+
+                    osc.type = 'sine';
+                    osc.start();
+
                 } catch (e) {
                     console.error('Audio init failed:', e);
                 }
             }
         }
 
-        // Play a note based on mouse position with filter
-        function playNoteWithFilter(x, y) {
-            if (!isAudioEnabled || !audioContext) return;
+        function updateSound(x, y) {
+            if (!isAudioEnabled || !osc) return;
 
             const noteIndex = Math.floor((y / window.innerHeight) * pentatonicNotes.length);
             const noteFrequency = pentatonicNotes[noteIndex];
+            osc.frequency.setTargetAtTime(noteFrequency, audioContext.currentTime, 0.1);
 
-            const osc = audioContext.createOscillator();
-            const gain = audioContext.createGain();
-            const filter = audioContext.createBiquadFilter();
-
-            osc.connect(filter);
-            filter.connect(gain);
-            gain.connect(masterGain);
-
-            osc.frequency.value = noteFrequency;
-            osc.type = 'sine';
-
-            // Set filter cutoff frequency based on x position
             const filterFrequency = (x / window.innerWidth) * 1000 + 500;
-            filter.type = 'lowpass';
-            filter.frequency.setValueAtTime(filterFrequency, audioContext.currentTime);
-
-            const now = audioContext.currentTime;
-            gain.gain.setValueAtTime(0, now);
-            gain.gain.linearRampToValueAtTime(0.2, now + 0.01);
-            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
-            osc.start(now);
-            osc.stop(now + 0.5);
+            lowPassFilter.frequency.setTargetAtTime(filterFrequency, audioContext.currentTime, 0.1);
+            highPassFilter.frequency.setTargetAtTime((x / window.innerWidth) * 500, audioContext.currentTime, 0.1);
         }
         
         // Helper to render image or mp4 video
@@ -282,8 +279,6 @@
                 const isLiked = this.classList.contains('liked');
                 this.setAttribute('aria-pressed', isLiked);
                 this.textContent = isLiked ? '❤️ Liked' : '👍 Like';
-                initAudio();
-                playNoteWithFilter(0, 0);
             });
             return postDiv;
         }
@@ -301,59 +296,4 @@
                 container.appendChild(skeleton);
                 skeletons.push(skeleton);
             }
-            setTimeout(() => {
-                skeletons.forEach(skeleton => {
-                    const postData = generatePost();
-                    const postElement = createPost(postData);
-                    skeleton.replaceWith(postElement);
-                });
-                feed.setAttribute('aria-busy', 'false');
-                isLoading = false;
-            }, 800);
-        }
-        
-        window.addEventListener('DOMContentLoaded', () => {
-            const feed = document.querySelector('.feed');
-            const sentinel = document.getElementById('sentinel');
-
-            feed.addEventListener('mousemove', (e) => {
-                initAudio();
-                playNoteWithFilter(e.clientX, e.clientY);
-            });
-
-            feed.addEventListener('touchmove', (e) => {
-                const touch = e.touches[0];
-                initAudio();
-                playNoteWithFilter(touch.clientX, touch.clientY);
-            });
-
-            const observer = new IntersectionObserver(
-                (entries) => {
-                    if (entries[0].isIntersecting) {
-                        loadMore();
-                    }
-                },
-                { rootMargin: '200px 0px' }
-            );
-            observer.observe(sentinel);
-
-            loadMore();
-            setTimeout(() => loadMore(), 100);
-
-            const audioToggle = document.getElementById('audio-toggle');
-            audioToggle.addEventListener('click', () => {
-                initAudio();
-                isAudioEnabled = !isAudioEnabled;
-                audioToggle.textContent = isAudioEnabled ? '🔊 Sound On' : '🔇 Sound Off';
-            });
-
-            const volumeSlider = document.getElementById('volume-slider');
-            volumeSlider.addEventListener('input', (e) => {
-                if (masterGain) {
-                    masterGain.gain.value = e.target.value / 100;
-                }
-            });
-        });
-    </script>
-</body>
-</html>
+            setTimeout
