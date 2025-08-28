@@ -11,32 +11,27 @@ body {
     margin: 0; background: #121212; color: #e0e0e0;
 }
 .header {
-    background: #1f1f1f; padding: 15px 20px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+    background: #1f1f1f; padding: 15px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.7);
     position: sticky; top: 0; z-index: 100; display: flex; align-items: center; justify-content: center;
     border-bottom: 1px solid #333;
 }
-.header h1 {
-    font-family: 'Billabong', cursive; font-size: 32px; color: #e0e0e0;
-}
-.feed { max-width: 600px; margin: 20px auto; padding: 0; }
+.header h1 { font-family:'Billabong', cursive; font-size:32px; color:#e0e0e0; }
+.feed { max-width:600px; margin:20px auto; padding:0; }
 .post {
     background: #1e1e1e; border-radius: 8px; padding: 15px; margin-bottom: 15px;
-    box-shadow: 0 0 1px rgba(0, 0, 0, 0.5); border: 1px solid #333;
+    box-shadow: 0 0 1px rgba(0,0,0,0.5); border:1px solid #333;
 }
-.post-header { display: flex; align-items: center; margin-bottom: 10px; }
+.post-header { display:flex; align-items:center; margin-bottom:10px; }
 .avatar {
-    width: 40px; height: 40px; border-radius: 50%; background: #3a3a3a; color: #fff;
-    display: flex; align-items: center; justify-content: center; margin-right: 10px;
+    width:40px; height:40px; border-radius:50%; background:#3a3a3a; color:#fff;
+    display:flex; align-items:center; justify-content:center; margin-right:10px;
 }
-.post-actions { display: flex; gap: 10px; margin-top: 10px; padding-top: 10px; border-top: 1px solid #444; }
-.action-btn { flex: 1; padding: 8px; border: none; background: none; cursor: pointer; color: #b3b3b3; font-weight: bold; text-align: center; }
-.action-btn:hover { background: #333; border-radius: 4px; }
-.action-btn.liked { color: #ed4956; }
-.skeleton-post {
-    background: #1e1e1e; border-radius: 8px; padding: 15px; margin-bottom: 15px; height: 150px;
-    animation: pulse 1.5s infinite; border: 1px solid #333;
-}
-@keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
+.post-actions { display:flex; gap:10px; margin-top:10px; padding-top:10px; border-top:1px solid #444; }
+.action-btn { flex:1; padding:8px; border:none; background:none; cursor:pointer; color:#b3b3b3; font-weight:bold; text-align:center; }
+.action-btn:hover { background:#333; border-radius:4px; }
+.action-btn.liked { color:#ed4956; }
+.skeleton-post { background:#1e1e1e; border-radius:8px; padding:15px; margin-bottom:15px; height:150px; animation:pulse 1.5s infinite; border:1px solid #333; }
+@keyframes pulse { 0%{opacity:0.6}50%{opacity:1}100%{opacity:0.6} }
 </style>
 </head>
 <body>
@@ -45,121 +40,54 @@ body {
     <div id="posts-container"></div>
     <div id="sentinel"></div>
 </div>
+
 <script src="media-list.js"></script>
 <script>
-let audioContext = null;
-let masterGain = null;
-let postId = 0;
-let isLoading = false;
-let currentWaveform = 'sine';
-const voices = {}; // map of pointerId -> {osc, gain, filter}
+let audioContext=null, masterGain=null, postId=0, isLoading=false, currentWaveform='sine';
+const voices = {}; // pointerId -> {osc,gain,filter}
 
-// minor pentatonic scale (C minor) across octaves
-const basePitches = [261.63, 311.13, 349.23, 392.00, 466.16];
-const scalePitches = [];
-for (let oct = 0; oct < 4; oct++) { const m = Math.pow(2, oct); basePitches.forEach(f=>scalePitches.push(f*m)); }
+const basePitches=[261.63,311.13,349.23,392.00,466.16];
+const scalePitches=[]; for(let o=0;o<4;o++){basePitches.forEach(f=>scalePitches.push(f*Math.pow(2,o)));}
 
-function initAudio() {
-    if(!audioContext){
-        audioContext = new (window.AudioContext||window.webkitAudioContext)();
-        masterGain = audioContext.createGain();
-        masterGain.connect(audioContext.destination);
-        masterGain.gain.value = 0.5;
-    }
-}
+function initAudio(){if(!audioContext){audioContext=new (window.AudioContext||window.webkitAudioContext)(); masterGain=audioContext.createGain(); masterGain.gain.value=0.5; masterGain.connect(audioContext.destination);}}
+function yToFreq(y){const n=1-Math.min(Math.max(y/window.innerHeight,0),1); const idx=Math.round(n*(scalePitches.length-1)); return scalePitches[idx];}
+function xToCutoff(x){const n=Math.min(Math.max(x/window.innerWidth,0),1); return 200+n*(8000-200);}
 
-function yToFreq(y){
-    const norm = 1 - Math.min(Math.max(y/window.innerHeight,0),1);
-    const idx = Math.round(norm*(scalePitches.length-1));
-    return scalePitches[idx];
-}
-function xToCutoff(x){
-    const norm = Math.min(Math.max(x/window.innerWidth,0),1);
-    return 200 + norm*(8000-200);
-}
+function startVoice(id,x,y){if(Object.keys(voices).length>=3) return; initAudio(); if(voices[id]) return;
+const osc=audioContext.createOscillator(), gain=audioContext.createGain(), filter=audioContext.createBiquadFilter();
+osc.type=currentWaveform; filter.type='lowpass'; filter.Q.value=7;
+osc.connect(filter); filter.connect(gain); gain.connect(masterGain);
+gain.gain.setValueAtTime(0.2,audioContext.currentTime); osc.start();
+voices[id]={osc,gain,filter}; updateVoice(id,x,y);}
+function updateVoice(id,x,y){const v=voices[id]; if(!v) return; v.osc.frequency.setValueAtTime(yToFreq(y),audioContext.currentTime); v.filter.frequency.setValueAtTime(xToCutoff(x),audioContext.currentTime);}
+function stopVoice(id){const v=voices[id]; if(!v) return; v.gain.gain.exponentialRampToValueAtTime(0.001,audioContext.currentTime+0.1); v.osc.stop(audioContext.currentTime+0.12); delete voices[id];}
 
-// start theremin voice
-function startVoice(id,x,y){
-    if(Object.keys(voices).length>=3) return;
-    initAudio();
-    if(voices[id]) return;
-    const osc = audioContext.createOscillator();
-    const gain = audioContext.createGain();
-    const filter = audioContext.createBiquadFilter();
-    osc.type = currentWaveform; filter.type='lowpass'; filter.Q.value=7;
-    osc.connect(filter); filter.connect(gain); gain.connect(masterGain);
-    gain.gain.setValueAtTime(0.001,audioContext.currentTime);
-    osc.start();
-    voices[id]={osc,gain,filter};
-    updateVoice(id,x,y,true);
-}
-function updateVoice(id,x,y,fade=false){
-    const v=voices[id]; if(!v) return;
-    const now = audioContext.currentTime;
-    v.osc.frequency.linearRampToValueAtTime(yToFreq(y), now+ (fade?0.05:0));
-    v.filter.frequency.linearRampToValueAtTime(xToCutoff(x), now+ (fade?0.05:0));
-    if(fade) v.gain.gain.exponentialRampToValueAtTime(0.2,now+0.05);
-}
-function stopVoice(id){
-    const v=voices[id]; if(!v) return;
-    const now = audioContext.currentTime;
-    v.gain.gain.exponentialRampToValueAtTime(0.001,now+0.12);
-    v.osc.stop(now+0.15);
-    delete voices[id];
-}
+document.addEventListener('pointerdown',e=>startVoice(e.pointerId,e.clientX,e.clientY));
+document.addEventListener('pointermove',e=>updateVoice(e.pointerId,e.clientX,e.clientY));
+document.addEventListener('pointerup',e=>stopVoice(e.pointerId));
+document.addEventListener('pointercancel',e=>stopVoice(e.pointerId));
+document.addEventListener('lostpointercapture',e=>stopVoice(e.pointerId));
 
-// pointer handling
-function pointerDown(e){initAudio(); startVoice(e.pointerId,e.clientX,e.clientY);}
-function pointerMove(e){updateVoice(e.pointerId,e.clientX,e.clientY);}
-function pointerUp(e){stopVoice(e.pointerId);}
-document.addEventListener('pointerdown',pointerDown);
-document.addEventListener('pointermove',pointerMove);
-document.addEventListener('pointerup',pointerUp);
-document.addEventListener('pointercancel',pointerUp);
-document.addEventListener('lostpointercapture',pointerUp);
+function renderMedia(path){const ext=path.split('.').pop().toLowerCase(); if(['jpg','jpeg','png'].includes(ext)) return `<div style="margin-top:10px;"><img src="${path}" alt="Post media" style="width:100%;border-radius:8px;"></div>`; if(ext==='mp4') return `<div style="margin-top:10px;"><video src="${path}" controls style="width:100%;border-radius:8px;"></video></div>`; return '';}
+function generatePost(){const names=['Emma','Liam','Olivia','Noah','Ava']; const texts=['Having a great day! 😊','Check out this amazing view! 🌅','Coffee time ☕','Working on something exciting! 🚀','Weekend vibes 🎉']; let media=null; if(typeof mediaList!=='undefined' && mediaList.length>0 && Math.random()>0.5) media=mediaList[Math.floor(Math.random()*mediaList.length)]; return {id:postId++, name:names[Math.floor(Math.random()*names.length)], text:texts[Math.floor(Math.random()*texts.length)], time:'2 hours ago', media};}
 
-// render media
-function renderMedia(filePath){
-    const ext=filePath.split('.').pop().toLowerCase();
-    if(['jpg','jpeg','png'].includes(ext)) return `<div style="margin-top:10px;"><img src="${filePath}" alt="Post media" style="width:100%;border-radius:8px;"></div>`;
-    if(ext==='mp4') return `<div style="margin-top:10px;"><video src="${filePath}" controls style="width:100%;border-radius:8px;"></video></div>`;
-    return '';
-}
-
-// generate post
-function generatePost(){
-    const names=['Emma','Liam','Olivia','Noah','Ava'];
-    const texts=['Having a great day! 😊','Check out this amazing view! 🌅','Coffee time ☕','Working on something exciting! 🚀','Weekend vibes 🎉'];
-    let media=null;
-    if(typeof mediaList!=="undefined" && mediaList.length>0 && Math.random()>0.5) media=mediaList[Math.floor(Math.random()*mediaList.length)];
-    return {id:postId++, name:names[Math.floor(Math.random()*names.length)], text:texts[Math.floor(Math.random()*texts.length)], time:'2 hours ago', media};
-}
-
-// create post
 function createPost(postData){
     const postDiv=document.createElement('div'); postDiv.className='post'; postDiv.dataset.postId=postData.id;
-    postDiv.innerHTML=`<div class="post-header"><div class="avatar">${postData.name[0]}</div>
-    <div><div><strong>${postData.name}</strong></div>
-    <div style="font-size:12px;color:#999;">${postData.time}</div></div></div>
+    postDiv.innerHTML=`<div class="post-header"><div class="avatar">${postData.name[0]}</div><div><div><strong>${postData.name}</strong></div><div style="font-size:12px;color:#999;">${postData.time}</div></div></div>
     <div>${postData.text}</div>
     ${postData.media?renderMedia(postData.media):''}
     <div class="post-actions">
-        <button class="action-btn like-btn" role="button" tabindex="0">👍 Like</button>
-        <button class="action-btn" role="button" tabindex="0">💬 Comment</button>
-        <button class="action-btn" role="button" tabindex="0">📤 Share</button>
+        <button class="action-btn like-btn">👍 Like</button>
+        <button class="action-btn comment-btn">💬 Comment</button>
+        <button class="action-btn share-btn">📤 Share</button>
     </div>`;
-    const likeBtn=postDiv.querySelector('.like-btn'); likeBtn.addEventListener('click',()=>{
-        currentWaveform='sine';
-        likeBtn.classList.toggle('liked');
-    });
+    postDiv.querySelector('.like-btn').addEventListener('click',()=>{currentWaveform='sine'; postDiv.querySelector('.like-btn').classList.toggle('liked');});
     postDiv.querySelector('.comment-btn').addEventListener('click',()=>{currentWaveform='square';});
     postDiv.querySelector('.share-btn').addEventListener('click',()=>{currentWaveform='triangle';});
     return postDiv;
 }
 
-// infinite scroll loader
-function loadMore(){
-    if(isLoading) return; isLoading=true;
+function loadMore(){if(isLoading) return; isLoading=true;
     const container=document.getElementById('posts-container'); const feed=document.querySelector('.feed');
     feed.setAttribute('aria-busy','true'); const skeletons=[];
     for(let i=0;i<5;i++){const skeleton=document.createElement('div'); skeleton.className='skeleton-post'; container.appendChild(skeleton); skeletons.push(skeleton);}
@@ -169,12 +97,12 @@ function loadMore(){
             s.replaceWith(post);
         });
         feed.setAttribute('aria-busy','false'); isLoading=false;
-    },800);
+    },400); // slightly faster to avoid freezing
 }
 
 window.addEventListener('DOMContentLoaded',()=>{
     const sentinel=document.getElementById('sentinel');
-    const observer=new IntersectionObserver((entries)=>{if(entries[0].isIntersecting) loadMore();},{rootMargin:'200px 0px'});
+    const observer=new IntersectionObserver(entries=>{if(entries[0].isIntersecting) loadMore();},{rootMargin:'200px 0px'});
     observer.observe(sentinel);
     loadMore(); setTimeout(()=>loadMore(),100);
 });
