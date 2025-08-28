@@ -1,183 +1,183 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Melodic Feed</title>
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Billabong&display=swap');
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-      margin: 0; padding: 0; background: #fafafa; color: #333;
-    }
-    header {
-      font-family: 'Billabong', cursive;
-      font-size: 2rem; padding: 1rem; text-align: center; background: white;
-      border-bottom: 1px solid #ddd; position: sticky; top: 0; z-index: 10;
-    }
-    .feed { max-width: 600px; margin: 1rem auto; }
-    .post {
-      background: white; margin-bottom: 1rem; border: 1px solid #ddd;
-      border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-    }
-    .post img { width: 100%; display: block; }
-    .actions { display: flex; justify-content: space-around; padding: 0.5rem; }
-    .action-btn { border: none; background: none; cursor: pointer; font-size: 1.2rem; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Melodic Feed</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Billabong&display=swap');
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    margin: 0; background: #121212; color: #e0e0e0;
+}
+.header {
+    background: #1f1f1f; padding: 15px 20px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+    position: sticky; top: 0; z-index: 100; display: flex; align-items: center; justify-content: center;
+    border-bottom: 1px solid #333;
+}
+.header h1 {
+    font-family: 'Billabong', cursive; font-size: 32px; color: #e0e0e0;
+}
+.feed { max-width: 600px; margin: 20px auto; padding: 0; }
+.post {
+    background: #1e1e1e; border-radius: 8px; padding: 15px; margin-bottom: 15px;
+    box-shadow: 0 0 1px rgba(0, 0, 0, 0.5); border: 1px solid #333;
+}
+.post-header { display: flex; align-items: center; margin-bottom: 10px; }
+.avatar {
+    width: 40px; height: 40px; border-radius: 50%; background: #3a3a3a; color: #fff;
+    display: flex; align-items: center; justify-content: center; margin-right: 10px;
+}
+.post-actions { display: flex; gap: 10px; margin-top: 10px; padding-top: 10px; border-top: 1px solid #444; }
+.action-btn { flex: 1; padding: 8px; border: none; background: none; cursor: pointer; color: #b3b3b3; font-weight: bold; text-align: center; }
+.action-btn:hover { background: #333; border-radius: 4px; }
+.action-btn.liked { color: #ed4956; }
+.skeleton-post {
+    background: #1e1e1e; border-radius: 8px; padding: 15px; margin-bottom: 15px; height: 150px;
+    animation: pulse 1.5s infinite; border: 1px solid #333;
+}
+@keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
+</style>
 </head>
 <body>
-  <header>Melodic Feed</header>
-  <div class="feed" id="feed"></div>
+<div class="header"><h1>🎵 MeloFeed</h1></div>
+<div class="feed" role="feed" aria-live="polite">
+    <div id="posts-container"></div>
+    <div id="sentinel"></div>
+</div>
+<script src="media-list.js"></script>
+<script>
+let audioContext = null;
+let masterGain = null;
+let postId = 0;
+let isLoading = false;
+let currentWaveform = 'sine';
+const voices = {}; // map of pointerId -> {osc, gain, filter}
 
-  <script>
-    // === Audio setup ===
-    let audioContext;
-    let masterGain;
-    let currentWaveform = "sine"; // default waveform
-    const voices = {}; // active touches → {osc, gain, filter}
+// minor pentatonic scale (C minor) across octaves
+const basePitches = [261.63, 311.13, 349.23, 392.00, 466.16];
+const scalePitches = [];
+for (let oct = 0; oct < 4; oct++) { const m = Math.pow(2, oct); basePitches.forEach(f=>scalePitches.push(f*m)); }
 
-    function initAudio() {
-      if (!audioContext) {
-        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+function initAudio() {
+    if(!audioContext){
+        audioContext = new (window.AudioContext||window.webkitAudioContext)();
         masterGain = audioContext.createGain();
-        masterGain.gain.setValueAtTime(0.8, audioContext.currentTime);
         masterGain.connect(audioContext.destination);
-      }
+        masterGain.gain.value = 0.5;
     }
+}
 
-    // minor pentatonic steps
-    const pentatonic = [0, 3, 5, 7, 10];
-    function yToFreq(y) {
-      const height = window.innerHeight;
-      const norm = 1 - (y / height);
-      const min = 40, max = 1000;
-      const scaled = norm * 30; // up to ~30 semitones
-      const base = 220;
-      const step = Math.floor(scaled % pentatonic.length);
-      const octave = Math.floor(scaled / pentatonic.length);
-      return base * Math.pow(2, octave) * Math.pow(2, pentatonic[step]/12);
-    }
+function yToFreq(y){
+    const norm = 1 - Math.min(Math.max(y/window.innerHeight,0),1);
+    const idx = Math.round(norm*(scalePitches.length-1));
+    return scalePitches[idx];
+}
+function xToCutoff(x){
+    const norm = Math.min(Math.max(x/window.innerWidth,0),1);
+    return 200 + norm*(8000-200);
+}
 
-    function xToCutoff(x) {
-      const width = window.innerWidth;
-      const norm = x / width;
-      return 200 + norm * 5000; // cutoff range
-    }
+// start theremin voice
+function startVoice(id,x,y){
+    if(Object.keys(voices).length>=3) return;
+    initAudio();
+    if(voices[id]) return;
+    const osc = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+    const filter = audioContext.createBiquadFilter();
+    osc.type = currentWaveform; filter.type='lowpass'; filter.Q.value=7;
+    osc.connect(filter); filter.connect(gain); gain.connect(masterGain);
+    gain.gain.setValueAtTime(0.001,audioContext.currentTime);
+    osc.start();
+    voices[id]={osc,gain,filter};
+    updateVoice(id,x,y,true);
+}
+function updateVoice(id,x,y,fade=false){
+    const v=voices[id]; if(!v) return;
+    const now = audioContext.currentTime;
+    v.osc.frequency.linearRampToValueAtTime(yToFreq(y), now+ (fade?0.05:0));
+    v.filter.frequency.linearRampToValueAtTime(xToCutoff(x), now+ (fade?0.05:0));
+    if(fade) v.gain.gain.exponentialRampToValueAtTime(0.2,now+0.05);
+}
+function stopVoice(id){
+    const v=voices[id]; if(!v) return;
+    const now = audioContext.currentTime;
+    v.gain.gain.exponentialRampToValueAtTime(0.001,now+0.12);
+    v.osc.stop(now+0.15);
+    delete voices[id];
+}
 
-    function startVoice(id, x, y) {
-      if (Object.keys(voices).length >= 3) return; // limit to 3 voices
-      initAudio();
-      if (voices[id]) return;
+// pointer handling
+function pointerDown(e){initAudio(); startVoice(e.pointerId,e.clientX,e.clientY);}
+function pointerMove(e){updateVoice(e.pointerId,e.clientX,e.clientY);}
+function pointerUp(e){stopVoice(e.pointerId);}
+document.addEventListener('pointerdown',pointerDown);
+document.addEventListener('pointermove',pointerMove);
+document.addEventListener('pointerup',pointerUp);
+document.addEventListener('pointercancel',pointerUp);
+document.addEventListener('lostpointercapture',pointerUp);
 
-      const osc = audioContext.createOscillator();
-      const gain = audioContext.createGain();
-      const filter = audioContext.createBiquadFilter();
+// render media
+function renderMedia(filePath){
+    const ext=filePath.split('.').pop().toLowerCase();
+    if(['jpg','jpeg','png'].includes(ext)) return `<div style="margin-top:10px;"><img src="${filePath}" alt="Post media" style="width:100%;border-radius:8px;"></div>`;
+    if(ext==='mp4') return `<div style="margin-top:10px;"><video src="${filePath}" controls style="width:100%;border-radius:8px;"></video></div>`;
+    return '';
+}
 
-      osc.type = currentWaveform;
-      filter.type = "lowpass";
-      gain.gain.setValueAtTime(0.2, audioContext.currentTime);
+// generate post
+function generatePost(){
+    const names=['Emma','Liam','Olivia','Noah','Ava'];
+    const texts=['Having a great day! 😊','Check out this amazing view! 🌅','Coffee time ☕','Working on something exciting! 🚀','Weekend vibes 🎉'];
+    let media=null;
+    if(typeof mediaList!=="undefined" && mediaList.length>0 && Math.random()>0.5) media=mediaList[Math.floor(Math.random()*mediaList.length)];
+    return {id:postId++, name:names[Math.floor(Math.random()*names.length)], text:texts[Math.floor(Math.random()*texts.length)], time:'2 hours ago', media};
+}
 
-      osc.connect(filter);
-      filter.connect(gain);
-      gain.connect(masterGain);
-
-      osc.start();
-
-      voices[id] = { osc, gain, filter };
-      updateVoice(id, x, y);
-    }
-
-    function updateVoice(id, x, y) {
-      const v = voices[id];
-      if (!v) return;
-      v.osc.frequency.setValueAtTime(yToFreq(y), audioContext.currentTime);
-      v.filter.frequency.setValueAtTime(xToCutoff(x), audioContext.currentTime);
-    }
-
-    function stopVoice(id) {
-      const v = voices[id];
-      if (!v) return;
-      v.gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.2);
-      v.osc.stop(audioContext.currentTime + 0.3);
-      delete voices[id];
-    }
-
-    // === Mouse control (single voice) ===
-    let mouseDown = false;
-    window.addEventListener("mousedown", e => {
-      mouseDown = true;
-      startVoice("mouse", e.clientX, e.clientY);
+// create post
+function createPost(postData){
+    const postDiv=document.createElement('div'); postDiv.className='post'; postDiv.dataset.postId=postData.id;
+    postDiv.innerHTML=`<div class="post-header"><div class="avatar">${postData.name[0]}</div>
+    <div><div><strong>${postData.name}</strong></div>
+    <div style="font-size:12px;color:#999;">${postData.time}</div></div></div>
+    <div>${postData.text}</div>
+    ${postData.media?renderMedia(postData.media):''}
+    <div class="post-actions">
+        <button class="action-btn like-btn" role="button" tabindex="0">👍 Like</button>
+        <button class="action-btn" role="button" tabindex="0">💬 Comment</button>
+        <button class="action-btn" role="button" tabindex="0">📤 Share</button>
+    </div>`;
+    const likeBtn=postDiv.querySelector('.like-btn'); likeBtn.addEventListener('click',()=>{
+        currentWaveform='sine';
+        likeBtn.classList.toggle('liked');
     });
-    window.addEventListener("mousemove", e => {
-      if (mouseDown) updateVoice("mouse", e.clientX, e.clientY);
-    });
-    window.addEventListener("mouseup", () => {
-      mouseDown = false;
-      stopVoice("mouse");
-    });
+    postDiv.querySelector('.comment-btn').addEventListener('click',()=>{currentWaveform='square';});
+    postDiv.querySelector('.share-btn').addEventListener('click',()=>{currentWaveform='triangle';});
+    return postDiv;
+}
 
-    // === Touch control (multi-touch up to 3) ===
-    window.addEventListener("touchstart", e => {
-      for (let t of e.changedTouches) {
-        startVoice(t.identifier, t.clientX, t.clientY);
-      }
-    });
-    window.addEventListener("touchmove", e => {
-      for (let t of e.changedTouches) {
-        updateVoice(t.identifier, t.clientX, t.clientY);
-      }
-    });
-    window.addEventListener("touchend", e => {
-      for (let t of e.changedTouches) stopVoice(t.identifier);
-    });
-    window.addEventListener("touchcancel", e => {
-      for (let t of e.changedTouches) stopVoice(t.identifier);
-    });
+// infinite scroll loader
+function loadMore(){
+    if(isLoading) return; isLoading=true;
+    const container=document.getElementById('posts-container'); const feed=document.querySelector('.feed');
+    feed.setAttribute('aria-busy','true'); const skeletons=[];
+    for(let i=0;i<5;i++){const skeleton=document.createElement('div'); skeleton.className='skeleton-post'; container.appendChild(skeleton); skeletons.push(skeleton);}
+    setTimeout(()=>{
+        skeletons.forEach(s=>{
+            const post=createPost(generatePost());
+            s.replaceWith(post);
+        });
+        feed.setAttribute('aria-busy','false'); isLoading=false;
+    },800);
+}
 
-    // === Feed simulation (no sounds) ===
-    const feed = document.getElementById("feed");
-    let postCount = 0;
-    function addPost() {
-      postCount++;
-      const post = document.createElement("div");
-      post.className = "post";
-      post.innerHTML = `
-        <img src="https://picsum.photos/600/400?random=${postCount}" alt="Random">
-        <div class="actions">
-          <button class="action-btn like-btn">❤️</button>
-          <button class="action-btn comment-btn">💬</button>
-          <button class="action-btn share-btn">📤</button>
-        </div>`;
-      feed.appendChild(post);
-      assignButtonWaveforms(post);
-    }
-
-    function loadInitialPosts() {
-      for (let i = 0; i < 5; i++) addPost();
-    }
-
-    window.addEventListener("scroll", () => {
-      if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 100) {
-        addPost();
-      }
-    });
-
-    // === Waveform assignment ===
-    function assignButtonWaveforms(scope=document) {
-      scope.querySelectorAll(".like-btn").forEach(btn => {
-        btn.addEventListener("click", () => { currentWaveform = "sine"; });
-      });
-      scope.querySelectorAll(".comment-btn").forEach(btn => {
-        btn.addEventListener("click", () => { currentWaveform = "square"; });
-      });
-      scope.querySelectorAll(".share-btn").forEach(btn => {
-        btn.addEventListener("click", () => { currentWaveform = "triangle"; });
-      });
-    }
-
-    window.addEventListener("DOMContentLoaded", () => {
-      loadInitialPosts();
-    });
-  </script>
+window.addEventListener('DOMContentLoaded',()=>{
+    const sentinel=document.getElementById('sentinel');
+    const observer=new IntersectionObserver((entries)=>{if(entries[0].isIntersecting) loadMore();},{rootMargin:'200px 0px'});
+    observer.observe(sentinel);
+    loadMore(); setTimeout(()=>loadMore(),100);
+});
+</script>
 </body>
 </html>
