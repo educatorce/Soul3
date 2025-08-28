@@ -1,209 +1,455 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Melodic Feed Theremin</title>
-  <style>
-    body {
-      margin: 0;
-      font-family: system-ui, sans-serif;
-      background: #111;
-      color: #fff;
-    }
-    header {
-      background: #222;
-      padding: 1rem;
-      text-align: center;
-      font-size: 1.5rem;
-      font-weight: bold;
-    }
-    .feed {
-      max-width: 600px;
-      margin: 1rem auto;
-    }
-    .post {
-      background: #1e1e1e;
-      margin-bottom: 1rem;
-      padding: 1rem;
-      border-radius: 12px;
-    }
-    .skeleton {
-      background: #333;
-      height: 120px;
-      border-radius: 12px;
-      margin-bottom: 1rem;
-      animation: pulse 1.5s infinite;
-    }
-    @keyframes pulse {
-      0% { opacity: 0.6; }
-      50% { opacity: 1; }
-      100% { opacity: 0.6; }
-    }
-  </style>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Melodic Feed</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Billabong&display=swap');
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            margin: 0;
+            background: #121212;
+            color: #e0e0e0;
+        }
+
+        .header {
+            background: #1f1f1f;
+            padding: 15px 20px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-bottom: 1px solid #333;
+        }
+
+        .header h1 {
+            font-family: 'Billabong', cursive;
+            font-size: 32px;
+            color: #e0e0e0;
+        }
+
+        .feed {
+            max-width: 600px;
+            margin: 20px auto;
+            padding: 0;
+        }
+
+        .post {
+            background: #1e1e1e;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 0 1px rgba(0, 0, 0, 0.5);
+            border: 1px solid #333;
+        }
+
+        .post-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #3a3a3a;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 10px;
+        }
+
+        .post-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #444;
+        }
+
+        .action-btn {
+            flex: 1;
+            padding: 8px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            color: #b3b3b3;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .action-btn:hover {
+            background: #333;
+            border-radius: 4px;
+        }
+
+        .action-btn.liked {
+            color: #ed4956;
+        }
+
+        .skeleton-post {
+            background: #1e1e1e;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            height: 150px;
+            animation: pulse 1.5s infinite;
+            border: 1px solid #333;
+        }
+
+        @keyframes pulse {
+            0% {
+                opacity: 0.6;
+            }
+            50% {
+                opacity: 1;
+            }
+            100% {
+                opacity: 0.6;
+            }
+        }
+
+        /* audio-panel removed by user request (no toggle, no slider) */
+    </style>
 </head>
 <body>
-  <header>Melodic Feed Theremin</header>
-  <main class="feed" id="feed"></main>
+    <div class="header">
+        <h1>🎵 MeloFeed</h1>
+    </div>
+    
+    <div class="feed" role="feed" aria-live="polite">
+        <div id="posts-container"></div>
+        <div id="sentinel"></div>
+    </div>
 
-  <script>
-    // ====== Audio Setup ======
-    let audioContext, masterGain;
-    let thereminOsc, thereminGain, thereminFilter;
-    let isPlaying = false;
+    <!-- optional external media list - left in place as in original -->
+    <script src="media-list.js"></script>
 
-    function initAudio() {
-      if (!audioContext) {
-        audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        masterGain = audioContext.createGain();
-        masterGain.gain.setValueAtTime(0.5, audioContext.currentTime);
-        masterGain.connect(audioContext.destination);
-      }
-    }
+    <script>
+        /* ----------------------------
+           Original globals (kept)
+           ---------------------------- */
+        let audioContext = null;
+        let masterGain = null;
+        let postId = 0;
+        let isLoading = false;
 
-    // Minor pentatonic scale in semitones
-    const minorPentatonic = [0, 3, 5, 7, 10];
+        /* ----------------------------
+           Audio initialization
+           ---------------------------- */
+        function initAudio() {
+            if (!audioContext) {
+                try {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    masterGain = audioContext.createGain();
+                    masterGain.connect(audioContext.destination);
+                    // default comfortable level
+                    masterGain.gain.value = 0.5;
+                } catch (e) {
+                    console.error('Audio init failed:', e);
+                }
+            }
+        }
 
-    function freqFromY(y) {
-      const baseNote = 220; // A3
-      const scaleDegree = Math.floor((1 - y) * 20) % minorPentatonic.length;
-      const octave = Math.floor((1 - y) * 4);
-      const semitone = minorPentatonic[scaleDegree] + octave * 12;
-      return baseNote * Math.pow(2, semitone / 12);
-    }
+        /* ----------------------------
+           Scroll blip (will not touch theremin)
+           ephemeral oscillator -> masterGain
+           ---------------------------- */
+        function playScrollNote() {
+            if (!audioContext) return;
+            try {
+                const osc = audioContext.createOscillator();
+                const gain = audioContext.createGain();
+                osc.type = 'triangle';
+                // make pitch vary slightly so repeated notes are less sterile
+                const baseFreq = 330;
+                const jitter = (Math.random() - 0.5) * 50;
+                osc.frequency.setValueAtTime(baseFreq + jitter, audioContext.currentTime);
 
-    function filterFromX(x) {
-      return 200 + x * 4000; // 200Hz – 4200Hz
-    }
+                gain.gain.setValueAtTime(0.15, audioContext.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.28);
 
-    function startTheremin(x, y) {
-      initAudio();
-      if (isPlaying || !audioContext) return;
+                osc.connect(gain);
+                gain.connect(masterGain);
 
-      thereminOsc = audioContext.createOscillator();
-      thereminGain = audioContext.createGain();
-      thereminFilter = audioContext.createBiquadFilter();
+                osc.start(audioContext.currentTime);
+                osc.stop(audioContext.currentTime + 0.3);
+            } catch (e) {
+                console.error('playScrollNote failed', e);
+            }
+        }
 
-      thereminOsc.type = "sine";
-      thereminFilter.type = "lowpass";
+        /* ----------------------------
+           Render media helper (unchanged)
+           ---------------------------- */
+        function renderMedia(filePath) {
+            const ext = filePath.split('.').pop().toLowerCase();
+            if (["jpg", "jpeg", "png", "webp", "gif"].includes(ext)) {
+                return `<div style="margin-top:10px;">
+                          <img src="${filePath}" alt="Post media" loading="lazy" style="width:100%; border-radius:8px;">
+                        </div>`;
+            } else if (ext === "mp4") {
+                return `<div style="margin-top:10px;">
+                          <video src="${filePath}" preload="metadata" controls style="width:100%; border-radius:8px;"></video>
+                        </div>`;
+            } else {
+                return "";
+            }
+        }
 
-      thereminOsc.connect(thereminFilter);
-      thereminFilter.connect(thereminGain);
-      thereminGain.connect(masterGain);
+        /* ----------------------------
+           Random post generator (unchanged)
+           ---------------------------- */
+        function generatePost() {
+            const names = ['Emma', 'Liam', 'Olivia', 'Noah', 'Ava'];
+            const texts = [
+                'Having a great day! 😊',
+                'Check out this amazing view! 🌅',
+                'Coffee time ☕',
+                'Working on something exciting! 🚀',
+                'Weekend vibes 🎉'
+            ];
+            let media = null;
+            if (typeof mediaList !== "undefined" && Array.isArray(mediaList) && mediaList.length > 0 && Math.random() > 0.5) {
+                media = mediaList[Math.floor(Math.random() * mediaList.length)];
+            }
+            return {
+                id: postId++,
+                name: names[Math.floor(Math.random() * names.length)],
+                text: texts[Math.floor(Math.random() * texts.length)],
+                time: '2 hours ago',
+                media: media
+            };
+        }
 
-      thereminGain.gain.setValueAtTime(0.2, audioContext.currentTime);
-      thereminOsc.start();
+        /* =========================
+           Theremin instrument layer
+           - continuous while pressing (pointer events)
+           - Y axis -> minor pentatonic pitch (multi-octave)
+           - X axis -> lowpass cutoff
+           - waveform memory set by buttons (no extra blip)
+           ========================= */
+        let thereminOsc = null;
+        let thereminGain = null;
+        let thereminFilter = null;
+        let isPlaying = false;
+        let currentWaveform = 'sine'; // default waveform
 
-      isPlaying = true;
-      updateTheremin(x, y);
-    }
+        // minor pentatonic base degrees (C minor pentatonic used earlier)
+        const basePitches = [261.63, 311.13, 349.23, 392.00, 466.16]; // C, Eb, F, G, Bb
+        const scalePitches = [];
+        for (let oct = 0; oct < 4; oct++) {
+            const mult = Math.pow(2, oct);
+            basePitches.forEach(f => scalePitches.push(f * mult));
+        }
 
-    function updateTheremin(x, y) {
-      if (!isPlaying) return;
-      const freq = freqFromY(y);
-      const cutoff = filterFromX(x);
+        function startTheremin(clientX, clientY) {
+            initAudio();
+            if (!audioContext || isPlaying) return;
+            try {
+                thereminOsc = audioContext.createOscillator();
+                thereminGain = audioContext.createGain();
+                thereminFilter = audioContext.createBiquadFilter();
 
-      thereminOsc.frequency.setValueAtTime(freq, audioContext.currentTime);
-      thereminFilter.frequency.setValueAtTime(cutoff, audioContext.currentTime);
-    }
+                thereminOsc.type = currentWaveform;
+                thereminFilter.type = 'lowpass';
+                thereminFilter.Q.value = 7; // a little resonance for color
 
-    function stopTheremin() {
-      if (!isPlaying) return;
-      thereminOsc.stop();
-      thereminOsc.disconnect();
-      thereminGain.disconnect();
-      thereminFilter.disconnect();
-      isPlaying = false;
-    }
+                thereminOsc.connect(thereminFilter);
+                thereminFilter.connect(thereminGain);
+                thereminGain.connect(masterGain);
 
-    // === Scroll Notes (do not interfere with theremin) ===
-    function playScrollNote() {
-      if (!audioContext) return;
-      const osc = audioContext.createOscillator();
-      const gain = audioContext.createGain();
+                const now = audioContext.currentTime;
+                thereminGain.gain.setValueAtTime(0.0001, now);
+                // quick but smooth fade in so it feels like a theremin
+                thereminGain.gain.exponentialRampToValueAtTime(0.22, now + 0.05);
 
-      osc.type = "triangle";
-      osc.frequency.setValueAtTime(440, audioContext.currentTime);
+                thereminOsc.start(now);
+                isPlaying = true;
+                updateTheremin(clientX, clientY);
+            } catch (e) {
+                console.error('startTheremin failed', e);
+            }
+        }
 
-      gain.gain.setValueAtTime(0.15, audioContext.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.3);
+        function stopTheremin() {
+            if (!isPlaying || !thereminOsc) return;
+            try {
+                const now = audioContext.currentTime;
+                thereminGain.gain.cancelScheduledValues(now);
+                thereminGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.12);
+                thereminOsc.stop(now + 0.15);
+            } catch (e) { /* ignore */ }
 
-      osc.connect(gain);
-      gain.connect(masterGain);
+            // disconnect shortly after stop to avoid leaks
+            setTimeout(() => {
+                try {
+                    thereminOsc?.disconnect();
+                    thereminFilter?.disconnect();
+                    thereminGain?.disconnect();
+                } catch (e) {}
+                thereminOsc = thereminGain = thereminFilter = null;
+                isPlaying = false;
+            }, 220);
+        }
 
-      osc.start();
-      osc.stop(audioContext.currentTime + 0.3);
-    }
+        function updateTheremin(clientX, clientY) {
+            if (!isPlaying || !thereminOsc || !thereminFilter) return;
+            const h = Math.max(1, window.innerHeight);
+            const w = Math.max(1, window.innerWidth);
 
-    // ====== Feed Simulation ======
-    const feed = document.getElementById("feed");
+            const yNorm = 1 - Math.min(Math.max(clientY / h, 0), 1); // top => 1
+            // map to index across scalePitches
+            const idxFloat = yNorm * (scalePitches.length - 1);
+            const idx = Math.round(idxFloat);
+            const freq = scalePitches[Math.min(Math.max(idx, 0), scalePitches.length - 1)];
+            thereminOsc.frequency.setValueAtTime(freq, audioContext.currentTime);
 
-    function addPost(i) {
-      const post = document.createElement("div");
-      post.className = "post";
-      post.textContent = "Post #" + i + " — melodic scroll...";
-      feed.appendChild(post);
-      playScrollNote();
-    }
+            const xNorm = Math.min(Math.max(clientX / w, 0), 1);
+            const cutoff = 200 + xNorm * (8000 - 200); // 200Hz - 8000Hz
+            thereminFilter.frequency.setValueAtTime(cutoff, audioContext.currentTime);
+        }
 
-    function loadSkeletons(count = 3) {
-      for (let i = 0; i < count; i++) {
-        const sk = document.createElement("div");
-        sk.className = "skeleton";
-        feed.appendChild(sk);
-      }
-    }
+        /* Pointer handling so it works on posts and anywhere */
+        let pointerDown = false;
+        function onPointerDown(e) {
+            // init audio on first user gesture and start theremin
+            initAudio();
+            pointerDown = true;
+            // set waveform to currentWaveform (it may have been updated by a button click)
+            startTheremin(e.clientX, e.clientY);
+            try { e.target.setPointerCapture?.(e.pointerId); } catch (_) {}
+        }
+        function onPointerMove(e) {
+            if (!pointerDown) return;
+            updateTheremin(e.clientX, e.clientY);
+        }
+        function onPointerUp(e) {
+            pointerDown = false;
+            try { e.target.releasePointerCapture?.(e.pointerId); } catch (_) {}
+            stopTheremin();
+        }
 
-    function replaceSkeletons(startIndex, count = 3) {
-      const skels = feed.querySelectorAll(".skeleton");
-      for (let i = 0; i < count && skels[i]; i++) {
-        feed.removeChild(skels[i]);
-        addPost(startIndex + i);
-      }
-    }
+        /* ----------------------------
+           Post creation (adapted from original)
+           - buttons set currentWaveform but no blip
+           ---------------------------- */
+        function createPost(postData) {
+            const postDiv = document.createElement('div');
+            postDiv.className = 'post';
+            postDiv.dataset.postId = postData.id;
+            postDiv.innerHTML = `
+                <div class="post-header">
+                    <div class="avatar">${postData.name[0]}</div>
+                    <div>
+                        <div><strong>${postData.name}</strong></div>
+                        <div style="font-size: 12px; color: #999;">${postData.time}</div>
+                    </div>
+                </div>
+                <div>${postData.text}</div>
+                ${postData.media ? renderMedia(postData.media) : ""}
+                <div class="post-actions">
+                    <button class="action-btn like-btn" role="button" tabindex="0" aria-pressed="false" aria-label="Like this post">👍 Like</button>
+                    <button class="action-btn comment-btn" role="button" tabindex="0" aria-label="Comment on this post">💬 Comment</button>
+                    <button class="action-btn share-btn" role="button" tabindex="0" aria-label="Share this post">📤 Share</button>
+                </div>
+            `;
 
-    // Initial content
-    loadSkeletons(3);
-    setTimeout(() => replaceSkeletons(1, 3), 1000);
+            // Like button: toggle UI and set waveform (no blip)
+            const likeBtn = postDiv.querySelector('.like-btn');
+            likeBtn.addEventListener('click', function(e) {
+                this.classList.toggle('liked');
+                const isLiked = this.classList.contains('liked');
+                this.setAttribute('aria-pressed', isLiked);
+                this.textContent = isLiked ? '❤️ Liked' : '👍 Like';
+                currentWaveform = 'sine'; // set waveform memory (no sound emitted here by design)
+            });
 
-    // Infinite scroll
-    let postCounter = 4;
-    window.addEventListener("scroll", () => {
-      if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 50) {
-        loadSkeletons(2);
-        setTimeout(() => {
-          replaceSkeletons(postCounter, 2);
-          postCounter += 2;
-        }, 800);
-      }
-    });
+            // Comment button sets waveform to square (no blip)
+            const commentBtn = postDiv.querySelector('.comment-btn');
+            commentBtn.addEventListener('click', () => {
+                currentWaveform = 'square';
+            });
 
-    // ====== User Input (theremin controls) ======
-    document.addEventListener("mousedown", e => {
-      startTheremin(e.clientX / window.innerWidth, e.clientY / window.innerHeight);
-    });
-    document.addEventListener("mousemove", e => {
-      if (isPlaying) {
-        updateTheremin(e.clientX / window.innerWidth, e.clientY / window.innerHeight);
-      }
-    });
-    document.addEventListener("mouseup", stopTheremin);
+            // Share button sets waveform to triangle (no blip)
+            const shareBtn = postDiv.querySelector('.share-btn');
+            shareBtn.addEventListener('click', () => {
+                currentWaveform = 'triangle';
+            });
 
-    // Touch support
-    document.addEventListener("touchstart", e => {
-      const t = e.touches[0];
-      startTheremin(t.clientX / window.innerWidth, t.clientY / window.innerHeight);
-    });
-    document.addEventListener("touchmove", e => {
-      const t = e.touches[0];
-      updateTheremin(t.clientX / window.innerWidth, t.clientY / window.innerHeight);
-    });
-    document.addEventListener("touchend", stopTheremin);
+            return postDiv;
+        }
 
-    // Unlock AudioContext on first interaction
-    window.addEventListener("click", () => {
-      initAudio();
-    }, { once: true });
-  </script>
+        /* ----------------------------
+           Infinite scroll loader (unchanged logic)
+           ---------------------------- */
+        function loadMore() {
+            if (isLoading) return;
+            isLoading = true;
+            const container = document.getElementById('posts-container');
+            const feed = document.querySelector('.feed');
+            feed.setAttribute('aria-busy', 'true');
+            const skeletons = [];
+            for (let i = 0; i < 5; i++) {
+                const skeleton = document.createElement('div');
+                skeleton.className = 'skeleton-post';
+                container.appendChild(skeleton);
+                skeletons.push(skeleton);
+            }
+            setTimeout(() => {
+                skeletons.forEach(skeleton => {
+                    const postData = generatePost();
+                    const postElement = createPost(postData);
+                    skeleton.replaceWith(postElement);
+                });
+                feed.setAttribute('aria-busy', 'false');
+                isLoading = false;
+            }, 800);
+        }
+
+        /* ----------------------------
+           Boot and event wiring
+           ---------------------------- */
+        window.addEventListener('DOMContentLoaded', () => {
+            const sentinel = document.getElementById('sentinel');
+            const observer = new IntersectionObserver(
+                (entries) => {
+                    if (entries[0].isIntersecting) {
+                        loadMore();
+                    }
+                },
+                { rootMargin: '200px 0px' }
+            );
+            observer.observe(sentinel);
+            // initial posts
+            loadMore();
+            setTimeout(() => loadMore(), 100);
+
+            // unlock audio on first pointer gesture (browsers require a user gesture)
+            // we also start theremin on pointerdown inside onPointerDown
+            document.addEventListener('pointerdown', onPointerDown);
+            document.addEventListener('pointermove', onPointerMove);
+            document.addEventListener('pointerup', onPointerUp);
+            document.addEventListener('pointercancel', onPointerUp);
+            document.addEventListener('lostpointercapture', onPointerUp);
+
+            // Keep scroll blip, but use playScrollNote() so it doesn't affect theremin
+            let scrollTimeout;
+            window.addEventListener('scroll', () => {
+                clearTimeout(scrollTimeout);
+                scrollTimeout = setTimeout(() => {
+                    initAudio(); // ensure AudioContext exists after the first user interaction
+                    playScrollNote();
+                }, 200);
+            });
+        });
+    </script>
 </body>
 </html>
