@@ -167,12 +167,12 @@
         let isAudioEnabled = true;
         let postId = 0;
         let isLoading = false;
+        let osc, lowPassFilter, highPassFilter;
 
         // Pentatonic scale notes (A minor pentatonic)
         const pentatonicNotes = [220, 261.63, 293.66, 329.63, 392, 440];
-        let osc, lowPassFilter, highPassFilter;
 
-        // Initialize audio context and oscillator
+        // Initialize audio on first user interaction
         function initAudio() {
             if (!audioContext) {
                 try {
@@ -267,33 +267,4 @@
                 </div>
                 <div>${postData.text}</div>
                 ${postData.media ? renderMedia(postData.media) : ""}
-                <div class="post-actions">
-                    <button class="action-btn like-btn" role="button" tabindex="0" aria-pressed="false">👍 Like</button>
-                    <button class="action-btn" role="button" tabindex="0">💬 Comment</button>
-                    <button class="action-btn" role="button" tabindex="0">📤 Share</button>
-                </div>
-            `;
-            const likeBtn = postDiv.querySelector('.like-btn');
-            likeBtn.addEventListener('click', function() {
-                this.classList.toggle('liked');
-                const isLiked = this.classList.contains('liked');
-                this.setAttribute('aria-pressed', isLiked);
-                this.textContent = isLiked ? '❤️ Liked' : '👍 Like';
-            });
-            return postDiv;
-        }
-
-        function loadMore() {
-            if (isLoading) return;
-            isLoading = true;
-            const container = document.getElementById('posts-container');
-            const feed = document.querySelector('.feed');
-            feed.setAttribute('aria-busy', 'true');
-            const skeletons = [];
-            for (let i = 0; i < 5; i++) {
-                const skeleton = document.createElement('div');
-                skeleton.className = 'skeleton-post';
-                container.appendChild(skeleton);
-                skeletons.push(skeleton);
-            }
-            setTimeout
+                <div class="post
