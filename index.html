@@ -35,6 +35,38 @@
       color: #fff;
     }
 
+    .menu-container {
+      position: relative;
+    }
+
+    .menu-icon {
+      cursor: pointer;
+      font-size: 22px;
+      color: #fff;
+    }
+
+    .dropdown {
+      display: none;
+      position: absolute;
+      top: 40px;
+      right: 0;
+      background: #1e1e1e;
+      border: 1px solid #333;
+      border-radius: 6px;
+      padding: 10px;
+      z-index: 1001;
+    }
+
+    .dropdown select {
+      width: 150px;
+      margin-bottom: 8px;
+      padding: 5px;
+      background: #222;
+      color: #eee;
+      border: 1px solid #555;
+      border-radius: 4px;
+    }
+
     .feed {
       max-width: 600px;
       margin: 20px auto;
@@ -42,20 +74,30 @@
     }
 
     .post {
-      max-width: 100%;
-      margin-bottom: 20px;
       background: #1e1e1e;
-      border: 1px solid #333;
       border-radius: 8px;
-      padding: 10px;
+      padding: 15px;
+      margin-bottom: 15px;
       box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+      border: 1px solid #333;
     }
 
-    .post img, .post video {
-      max-width: 100%;
-      border-radius: 8px;
-      display: block;
-      margin-top: 10px;
+    .post-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: #3a3a3a;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 10px;
     }
 
     .actions {
@@ -91,40 +133,6 @@
       50% { opacity: 1; }
       100% { opacity: 0.6; }
     }
-
-    /* Menu estilos (opcional, si quieres instrumentos y efectos visibles) */
-    .menu-container {
-      position: relative;
-    }
-
-    .menu-icon {
-      cursor: pointer;
-      font-size: 22px;
-      color: #fff;
-    }
-
-    .dropdown {
-      display: none;
-      position: absolute;
-      top: 40px;
-      right: 0;
-      background: #1e1e1e;
-      border: 1px solid #333;
-      border-radius: 6px;
-      padding: 10px;
-      z-index: 1001;
-    }
-
-    .dropdown select {
-      width: 150px;
-      margin-bottom: 8px;
-      padding: 5px;
-      background: #222;
-      color: #eee;
-      border: 1px solid #555;
-      border-radius: 4px;
-    }
-
   </style>
 </head>
 <body>
@@ -183,135 +191,25 @@
     <div id="sentinel"></div>
   </main>
 
-  <!-- Media externo -->
-  <script src="media-list.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.39/Tone.js"></script>
-
+  <script src="media-list.js"></script>
   <script>
-    // --- POSTS ---
-    const feed = document.getElementById('posts-container');
     let postId = 0;
     let isLoading = false;
 
-    function generatePost() {
-      const names = ['Emma', 'Liam', 'Olivia', 'Noah', 'Ava'];
-      const texts = [
-        'Having a great day! 😊',
-        'Check out this amazing view! 🌅',
-        'Coffee time ☕',
-        'Working on something exciting! 🚀',
-        'Weekend vibes 🎉'
-      ];
+    const feed = document.getElementById("posts-container");
 
-      let media = null;
-      if (typeof mediaList !== "undefined" && mediaList.length > 0 && Math.random() > 0.5) {
-        media = mediaList[Math.floor(Math.random() * mediaList.length)];
-      }
-
-      return {
-        id: postId++,
-        name: names[Math.floor(Math.random() * names.length)],
-        text: texts[Math.floor(Math.random() * texts.length)],
-        time: '2 hours ago',
-        media: media
-      };
-    }
-
-    function renderMedia(filePath) {
-      const ext = filePath.split('.').pop().toLowerCase();
-      if (["jpg","jpeg","png"].includes(ext)) {
-        return `<img src="${filePath}" alt="Post media">`;
-      } else if (ext === "mp4") {
-        return `<video src="${filePath}" controls></video>`;
-      } else {
-        return "";
-      }
-    }
-
-    function createPost(postData) {
-      const postDiv = document.createElement('div');
-      postDiv.className = 'post';
-      postDiv.dataset.postId = postData.id;
-      postDiv.innerHTML = `
-        <div><strong>${postData.name}</strong> • <small>${postData.time}</small></div>
-        <div>${postData.text}</div>
-        ${postData.media ? renderMedia(postData.media) : ""}
-        <div class="actions">
-          <button class="like-btn">❤️</button>
-          <button>💬</button>
-          <button>🔗</button>
-        </div>
-      `;
-
-      postDiv.querySelector('.like-btn').addEventListener('click', () => {
-        postDiv.querySelector('.like-btn').classList.toggle('liked');
-        playNote();
-      });
-
-      return postDiv;
-    }
-
-    function loadMore() {
-      if (isLoading) return;
-      isLoading = true;
-
-      const skeletons = [];
-      for (let i = 0; i < 3; i++) {
-        const skeleton = document.createElement('div');
-        skeleton.className = 'skeleton-post';
-        feed.appendChild(skeleton);
-        skeletons.push(skeleton);
-      }
-
-      setTimeout(() => {
-        skeletons.forEach(skeleton => {
-          const postData = generatePost();
-          const postEl = createPost(postData);
-          skeleton.replaceWith(postEl);
-        });
-        isLoading = false;
-      }, 500);
-    }
-
-    const sentinel = document.getElementById('sentinel');
-    const observer = new IntersectionObserver(
-      entries => { if(entries[0].isIntersecting) loadMore(); },
-      { rootMargin: '200px 0px' }
-    );
-    observer.observe(sentinel);
-
-    // --- AUDIO / SYNTH ---
-    let synth, effectNode;
-    const lowPass = new Tone.Filter(20000, "lowpass").toDestination();
-    let currentScale = "major";
-    let currentTonality = "C";
-
-    const scales = {
-      major: [0,2,4,5,7,9,11],
-      minor: [0,2,3,5,7,8,10],
-      dorian: [0,2,3,5,7,9,10],
-      phrygian: [0,1,3,5,7,8,10],
-      lydian: [0,2,4,6,7,9,11],
-      mixolydian: [0,2,4,5,7,9,10],
-      locrian: [0,1,3,5,6,8,10],
-      harmonicMinor: [0,2,3,5,7,8,11],
-      pentatonicMajor: [0,2,4,7,9],
-      pentatonicMinor: [0,3,5,7,10]
-    };
-    const tonalities = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
+    // ------------------- Tone.js -------------------
+    let synth, lowPass, effectNode;
+    lowPass = new Tone.Filter(20000, "lowpass").toDestination();
 
     function createSynth(type="Synth") {
       if(synth) synth.dispose();
       synth = new Tone[type]().connect(lowPass);
-      if(effectNode) synth.connect(effectNode);
     }
 
     function applyEffect(type) {
-      if(effectNode){
-        effectNode.dispose();
-        synth.disconnect();
-        synth.connect(lowPass);
-      }
+      if(effectNode){ effectNode.dispose(); synth.disconnect(); synth.connect(lowPass); }
       if(type !== "none"){
         switch(type){
           case "reverb": effectNode = new Tone.Reverb().toDestination(); break;
@@ -319,7 +217,7 @@
           case "distortion": effectNode = new Tone.Distortion(0.4).toDestination(); break;
           case "tremolo": effectNode = new Tone.Tremolo().start().toDestination(); break;
           case "vibrato": effectNode = new Tone.Vibrato().toDestination(); break;
-          case "delay": effectNode = new Tone.FeedbackDelay("8n", 0.5).toDestination(); break;
+          case "delay": effectNode = new Tone.FeedbackDelay("8n",0.5).toDestination(); break;
         }
         synth.disconnect();
         synth.connect(effectNode);
@@ -328,11 +226,24 @@
 
     createSynth("Synth");
 
-    document.getElementById("instrumentSelect").addEventListener("change", e => {
-      createSynth(e.target.value);
-      applyEffect(document.getElementById("effectSelect").value);
-    });
+    document.getElementById("instrumentSelect").addEventListener("change", e => { createSynth(e.target.value); applyEffect(document.getElementById("effectSelect").value); });
     document.getElementById("effectSelect").addEventListener("change", e => applyEffect(e.target.value));
+
+    const scales = {
+      major:[0,2,4,5,7,9,11],
+      minor:[0,2,3,5,7,8,10],
+      dorian:[0,2,3,5,7,9,10],
+      phrygian:[0,1,3,5,7,8,10],
+      lydian:[0,2,4,6,7,9,11],
+      mixolydian:[0,2,4,5,7,9,10],
+      locrian:[0,1,3,5,6,8,10],
+      harmonicMinor:[0,2,3,5,7,8,11],
+      pentatonicMajor:[0,2,4,7,9],
+      pentatonicMinor:[0,3,5,7,10]
+    };
+    const tonalities = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
+    let currentScale = "major";
+    let currentTonality = "C";
     document.getElementById("scaleSelect").addEventListener("change", e => currentScale = e.target.value);
     document.getElementById("tonalitySelect").addEventListener("change", e => currentTonality = e.target.value);
 
@@ -345,53 +256,127 @@
       const noteIndex = Math.floor(position * totalNotes);
       const octave = 3 + Math.floor(noteIndex / scale.length);
       const semitone = (scale[noteIndex % scale.length] + tonalityIndex) % 12;
-      return tonalities[semitone] + octave;
+      return tonalities[semitone]+octave;
     }
 
+    // Input touch/mouse
     let active = false;
-    function startSound(y, x){
-      const note = getNoteFromY(y);
-      synth.triggerAttack(note);
-      updateFilter(x);
-    }
-    function updateSound(y, x){
-      if(!active) return;
-      const note = getNoteFromY(y);
-      synth.setNote(note);
-      updateFilter(x);
-    }
+    function startSound(y,x){ const note=getNoteFromY(y); synth.triggerAttack(note); updateFilter(x); }
+    function updateSound(y,x){ if(!active) return; const note=getNoteFromY(y); synth.setNote(note); updateFilter(x); }
     function stopSound(){ synth.triggerRelease(); }
-    function updateFilter(x){
-      const freq = Tone.Frequency(200 + (x / window.innerWidth) * 8000);
-      lowPass.frequency.setValueAtTime(freq, Tone.now());
+    function updateFilter(x){ const freq = Tone.Frequency(200 + (x/window.innerWidth)*8000); lowPass.frequency.setValueAtTime(freq,Tone.now()); }
+
+    window.addEventListener("mousedown", e=>{ if(e.target.closest("header")) return; active=true; Tone.start(); startSound(e.clientY,e.clientX); });
+    window.addEventListener("mousemove", e=>{ if(active) updateSound(e.clientY,e.clientX); });
+    window.addEventListener("mouseup", ()=>{ active=false; stopSound(); });
+    window.addEventListener("touchstart", e=>{ if(e.target.closest("header")) return; active=true; Tone.start(); const t=e.touches[0]; startSound(t.clientY,t.clientX); });
+    window.addEventListener("touchmove", e=>{ if(active){ const t=e.touches[0]; updateSound(t.clientY,t.clientX); }});
+    window.addEventListener("touchend", ()=>{ active=false; stopSound(); });
+
+    // ------------------- Posts -------------------
+    function renderMedia(filePath){
+      const ext=filePath.split('.').pop().toLowerCase();
+      if(["jpg","jpeg","png"].includes(ext)) return `<div style="margin-top:10px;"><img src="${filePath}" style="width:100%; border-radius:8px;"></div>`;
+      if(ext==="mp4") return `<div style="margin-top:10px;"><video src="${filePath}" controls style="width:100%; border-radius:8px;"></video></div>`;
+      return "";
     }
 
-    // --- Eventos touch/mouse ---
-    window.addEventListener("touchstart", e => {
-      if(e.target.closest("header")) return;
-      active = true;
-      Tone.start();
-      const touch = e.touches[0];
-      startSound(touch.clientY, touch.clientX);
-    });
-    window.addEventListener("touchmove", e => { if(active) updateSound(e.touches[0].clientY, e.touches[0].clientX); });
-    window.addEventListener("touchend", () => { active = false; stopSound(); });
-    window.addEventListener("mousedown", e => {
-      if(e.target.closest("header")) return;
-      active = true;
-      Tone.start();
-      startSound(e.clientY, e.clientX);
-    });
-    window.addEventListener("mousemove", e => { if(active) updateSound(e.clientY, e.clientX); });
-    window.addEventListener("mouseup", () => { active = false; stopSound(); });
+    function checkMediaExists(url){
+      return new Promise(resolve=>{
+        const img=new Image();
+        img.onload=()=>resolve(true);
+        img.onerror=()=>resolve(false);
+        img.src=url;
+      });
+    }
 
-    // --- Menu toggle ---
-    const menuIcon = document.querySelector(".menu-icon");
-    const dropdown = document.querySelector(".dropdown");
-    menuIcon.addEventListener("click", () => {
-      dropdown.style.display = dropdown.style.display === "block" ? "none" : "block";
-    });
+    async function generateValidPost(){
+      let media=null;
+      if(typeof mediaList!=="undefined" && mediaList.length>0){
+        let attempts=0;
+        do{
+          media=mediaList[Math.floor(Math.random()*mediaList.length)];
+          attempts++;
+          if(!media) break;
+          const ext=media.split('.').pop().toLowerCase();
+          let exists=false;
+          if(["jpg","jpeg","png"].includes(ext)) exists=await checkMediaExists(media);
+          else if(ext==="mp4") exists=true; // simplificación para mp4
+          if(exists) break;
+          media=null;
+        } while(attempts<mediaList.length);
+      }
+      const names=['Emma','Liam','Olivia','Noah','Ava'];
+      const texts=['Having a great day! 😊','Check out this amazing view! 🌅','Coffee time ☕','Working on something exciting! 🚀','Weekend vibes 🎉'];
+      return {
+        id: postId++,
+        name:names[Math.floor(Math.random()*names.length)],
+        text:texts[Math.floor(Math.random()*texts.length)],
+        time:'2 hours ago',
+        media:media
+      };
+    }
 
+    function createPost(postData){
+      const postDiv=document.createElement('div');
+      postDiv.className='post';
+      postDiv.dataset.postId=postData.id;
+      postDiv.innerHTML=`
+        <div class="post-header">
+          <div class="avatar">${postData.name[0]}</div>
+          <div>
+            <div><strong>${postData.name}</strong></div>
+            <div style="font-size:12px;color:#999;">${postData.time}</div>
+          </div>
+        </div>
+        <div>${postData.text}</div>
+        ${postData.media ? renderMedia(postData.media) : ""}
+        <div class="actions">
+          <button class="like-btn">❤️</button>
+          <button>💬</button>
+          <button>🔗</button>
+        </div>
+      `;
+      postDiv.querySelectorAll('button').forEach(btn=>{
+        btn.addEventListener('click',()=>{
+          Tone.start();
+          const note=['C4','D4','E4','G4','A4'][Math.floor(Math.random()*5)];
+          synth.triggerAttackRelease(note,'8n');
+        });
+      });
+      return postDiv;
+    }
+
+    async function loadMore(){
+      if(isLoading) return;
+      isLoading=true;
+      const skeletons=[];
+      for(let i=0;i<3;i++){
+        const sk=document.createElement('div');
+        sk.className='skeleton-post';
+        feed.appendChild(sk);
+        skeletons.push(sk);
+      }
+      setTimeout(async()=>{
+        for(const sk of skeletons){
+          const postData=await generateValidPost();
+          const postEl=createPost(postData);
+          sk.replaceWith(postEl);
+        }
+        isLoading=false;
+      },500);
+    }
+
+    // ------------------- Infinite scroll -------------------
+    window.addEventListener('DOMContentLoaded',()=>{
+      const sentinel=document.getElementById('sentinel');
+      const observer=new IntersectionObserver(entries=>{
+        if(entries[0].isIntersecting) loadMore();
+      },{rootMargin:'200px 0px'});
+      observer.observe(sentinel);
+      loadMore();
+      setTimeout(()=>loadMore(),100);
+    });
   </script>
 </body>
 </html>
