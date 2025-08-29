@@ -1,343 +1,255 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Melodic Feed</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Melofeed</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Billabong&display=swap');
-
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
-        Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
       background-color: #121212;
-      color: #eee;
+      color: #fff;
       margin: 0;
       padding: 0;
+      overflow-x: hidden;
     }
-
     header {
       display: flex;
-      align-items: center;
       justify-content: space-between;
-      padding: 10px 20px;
-      background-color: #1e1e1e;
-      border-bottom: 1px solid #333;
+      align-items: center;
+      padding: 1rem;
+      background: #1e1e1e;
       position: sticky;
       top: 0;
       z-index: 1000;
     }
-
-    header h1 {
+    .logo {
       font-family: 'Billabong', cursive;
-      font-size: 28px;
-      margin: 0;
+      font-size: 2rem;
+    }
+    .menu {
+      display: flex;
+      gap: 1rem;
+    }
+    .menu select {
+      background: #2c2c2c;
       color: #fff;
-    }
-
-    .menu-container {
-      position: relative;
-    }
-
-    .menu-icon {
-      cursor: pointer;
-      font-size: 22px;
-      color: #fff;
-    }
-
-    .dropdown {
-      display: none;
-      position: absolute;
-      top: 40px;
-      right: 0;
-      background: #1e1e1e;
-      border: 1px solid #333;
+      border: none;
+      padding: 0.3rem 0.6rem;
       border-radius: 6px;
-      padding: 10px;
-      z-index: 1001;
     }
-
-    .dropdown select {
-      width: 150px;
-      margin-bottom: 8px;
-      padding: 5px;
-      background: #222;
-      color: #eee;
-      border: 1px solid #555;
-      border-radius: 4px;
-    }
-
-    .post {
+    main {
       max-width: 600px;
-      margin: 20px auto;
+      margin: 0 auto;
+      padding: 1rem;
+    }
+    .post {
       background: #1e1e1e;
-      border: 1px solid #333;
-      border-radius: 8px;
-      padding: 10px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+      border-radius: 10px;
+      margin-bottom: 1.5rem;
+      padding: 1rem;
     }
-
     .post img, .post video {
-      max-width: 100%;
-      border-radius: 8px;
-      display: block;
+      width: 100%;
+      border-radius: 10px;
+      margin-top: 0.5rem;
     }
-
     .actions {
       display: flex;
       justify-content: space-around;
-      margin-top: 10px;
+      margin-top: 0.5rem;
     }
-
     .actions button {
       background: none;
       border: none;
+      color: #fff;
+      font-size: 1.2rem;
       cursor: pointer;
-      color: #eee;
-      font-size: 18px;
-    }
-
-    .actions button:hover {
-      color: #ff4081;
     }
   </style>
 </head>
 <body>
   <header>
-    <h1>Melofeed</h1>
-    <div class="menu-container">
-      <span class="menu-icon">☰</span>
-      <div class="dropdown">
-        <select id="instrumentSelect">
-          <option value="Synth">Synth</option>
-          <option value="AMSynth">AMSynth</option>
-          <option value="FMSynth">FMSynth</option>
-          <option value="DuoSynth">DuoSynth</option>
-        </select>
-        <select id="effectSelect">
-          <option value="none">No Effect</option>
-          <option value="reverb">Reverb</option>
-          <option value="chorus">Chorus</option>
-          <option value="distortion">Distortion</option>
-          <option value="tremolo">Tremolo</option>
-          <option value="vibrato">Vibrato</option>
-          <option value="delay">Delay</option>
-        </select>
-        <select id="scaleSelect">
-          <option value="major">Major</option>
-          <option value="minor">Minor</option>
-          <option value="dorian">Dorian</option>
-          <option value="phrygian">Phrygian</option>
-          <option value="lydian">Lydian</option>
-          <option value="mixolydian">Mixolydian</option>
-          <option value="locrian">Locrian</option>
-          <option value="harmonicMinor">Harmonic Minor</option>
-          <option value="pentatonicMajor">Pentatonic Major</option>
-          <option value="pentatonicMinor">Pentatonic Minor</option>
-        </select>
-        <select id="tonalitySelect">
-          <option value="C">C</option>
-          <option value="C#">C#</option>
-          <option value="D">D</option>
-          <option value="D#">D#</option>
-          <option value="E">E</option>
-          <option value="F">F</option>
-          <option value="F#">F#</option>
-          <option value="G">G</option>
-          <option value="G#">G#</option>
-          <option value="A">A</option>
-          <option value="A#">A#</option>
-          <option value="B">B</option>
-        </select>
-      </div>
+    <div class="logo">Melofeed</div>
+    <div class="menu">
+      <select id="instrument">
+        <option value="Synth">Synth</option>
+        <option value="AMSynth">AMSynth</option>
+        <option value="FMSynth">FMSynth</option>
+        <option value="MonoSynth">MonoSynth</option>
+      </select>
+      <select id="scale">
+        <option value="major">Major</option>
+        <option value="minor">Minor</option>
+        <option value="dorian">Dorian</option>
+        <option value="phrygian">Phrygian</option>
+        <option value="lydian">Lydian</option>
+        <option value="mixolydian">Mixolydian</option>
+        <option value="aeolian">Aeolian</option>
+        <option value="locrian">Locrian</option>
+        <option value="harmonicMinor">Harmonic Minor</option>
+        <option value="melodicMinor">Melodic Minor</option>
+        <option value="pentatonicMajor">Pentatonic Major</option>
+        <option value="pentatonicMinor">Pentatonic Minor</option>
+      </select>
+      <select id="tonic">
+        <option value="C">C</option>
+        <option value="C#">C#</option>
+        <option value="D">D</option>
+        <option value="D#">D#</option>
+        <option value="E">E</option>
+        <option value="F">F</option>
+        <option value="F#">F#</option>
+        <option value="G">G</option>
+        <option value="G#">G#</option>
+        <option value="A">A</option>
+        <option value="A#">A#</option>
+        <option value="B">B</option>
+      </select>
+      <select id="effect">
+        <option value="none">No Effect</option>
+        <option value="reverb">Reverb</option>
+        <option value="chorus">Chorus</option>
+        <option value="distortion">Distortion</option>
+        <option value="tremolo">Tremolo</option>
+        <option value="vibrato">Vibrato</option>
+        <option value="delay">Delay</option>
+      </select>
     </div>
   </header>
-
   <main id="feed"></main>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.39/Tone.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
   <script>
-    const feed = document.getElementById("feed");
+    // Load posts from media-list.json (RESTORED)
+    async function loadPosts() {
+      try {
+        const response = await fetch("media-list.json");
+        const posts = await response.json();
+        const feed = document.getElementById("feed");
+        feed.innerHTML = "";
 
-    // Load posts from media-list.json
-    fetch("media-list.json")
-      .then(res => res.json())
-      .then(posts => {
         posts.forEach(post => {
-          const el = document.createElement("div");
-          el.className = "post";
-          if (post.type === "image") {
-            const img = document.createElement("img");
-            img.src = post.url;
-            el.appendChild(img);
-          } else if (post.type === "video") {
-            const video = document.createElement("video");
-            video.src = post.url;
-            video.controls = true;
-            el.appendChild(video);
-          }
-          const actions = document.createElement("div");
-          actions.className = "actions";
-          actions.innerHTML = `
-            <button>❤️</button>
-            <button>💬</button>
-            <button>🔗</button>
+          const div = document.createElement("div");
+          div.className = "post";
+          div.innerHTML = `
+            <h3>${post.title}</h3>
+            ${post.type === "image" ? `<img src="${post.src}" alt="">` : ""}
+            ${post.type === "video" ? `<video controls><source src="${post.src}" type="video/mp4"></video>` : ""}
+            <div class="actions">
+              <button>❤️</button>
+              <button>💬</button>
+              <button>🔗</button>
+            </div>
           `;
-          el.appendChild(actions);
-          feed.appendChild(el);
+          feed.appendChild(div);
         });
-      });
-
-    // Menu toggle
-    const menuIcon = document.querySelector(".menu-icon");
-    const dropdown = document.querySelector(".dropdown");
-    menuIcon.addEventListener("click", () => {
-      dropdown.style.display = dropdown.style.display === "block" ? "none" : "block";
-    });
-
-    // Tone.js Setup
-    let synth, filter, effectNode;
-    const lowPass = new Tone.Filter(20000, "lowpass").toDestination();
-
-    function createSynth(type="Synth") {
-      if (synth) synth.dispose();
-      synth = new Tone[type]().connect(lowPass);
-    }
-
-    function applyEffect(type) {
-      if (effectNode) {
-        effectNode.dispose();
-        synth.disconnect();
-        synth.connect(lowPass);
-      }
-      if (type !== "none") {
-        switch(type) {
-          case "reverb":
-            effectNode = new Tone.Reverb().toDestination();
-            break;
-          case "chorus":
-            effectNode = new Tone.Chorus().toDestination();
-            break;
-          case "distortion":
-            effectNode = new Tone.Distortion(0.4).toDestination();
-            break;
-          case "tremolo":
-            effectNode = new Tone.Tremolo().start().toDestination();
-            break;
-          case "vibrato":
-            effectNode = new Tone.Vibrato().toDestination();
-            break;
-          case "delay":
-            effectNode = new Tone.FeedbackDelay("8n", 0.5).toDestination();
-            break;
-        }
-        synth.disconnect();
-        synth.connect(effectNode);
+      } catch (err) {
+        console.error("Error loading posts:", err);
       }
     }
+    loadPosts();
 
-    createSynth("Synth");
+    // Tone.js musical interaction
+    let synth, filter, effect, active = false;
 
-    document.getElementById("instrumentSelect").addEventListener("change", e => {
-      createSynth(e.target.value);
-      applyEffect(document.getElementById("effectSelect").value);
-    });
-
-    document.getElementById("effectSelect").addEventListener("change", e => {
-      applyEffect(e.target.value);
-    });
-
-    // Scales
-    const scales = {
-      major: [0,2,4,5,7,9,11],
-      minor: [0,2,3,5,7,8,10],
-      dorian: [0,2,3,5,7,9,10],
-      phrygian: [0,1,3,5,7,8,10],
-      lydian: [0,2,4,6,7,9,11],
-      mixolydian: [0,2,4,5,7,9,10],
-      locrian: [0,1,3,5,6,8,10],
-      harmonicMinor: [0,2,3,5,7,8,11],
-      pentatonicMajor: [0,2,4,7,9],
-      pentatonicMinor: [0,3,5,7,10]
+    const instruments = {
+      Synth: () => new Tone.Synth(),
+      AMSynth: () => new Tone.AMSynth(),
+      FMSynth: () => new Tone.FMSynth(),
+      MonoSynth: () => new Tone.MonoSynth()
     };
 
-    const tonalities = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
-    let currentScale = "major";
-    let currentTonality = "C";
+    function updateSynth() {
+      if (synth) synth.dispose();
+      synth = instruments[document.getElementById("instrument").value]();
+      filter = new Tone.Filter(800, "lowpass").toDestination();
+      synth.connect(filter);
+    }
+    updateSynth();
 
-    document.getElementById("scaleSelect").addEventListener("change", e => {
-      currentScale = e.target.value;
-    });
-    document.getElementById("tonalitySelect").addEventListener("change", e => {
-      currentTonality = e.target.value;
+    document.getElementById("instrument").addEventListener("change", updateSynth);
+    document.getElementById("effect").addEventListener("change", (e) => {
+      if (effect) effect.dispose();
+      effect = null;
+      let choice = e.target.value;
+      if (choice !== "none") {
+        switch (choice) {
+          case "reverb": effect = new Tone.Reverb().toDestination(); break;
+          case "chorus": effect = new Tone.Chorus().toDestination(); break;
+          case "distortion": effect = new Tone.Distortion().toDestination(); break;
+          case "tremolo": effect = new Tone.Tremolo().start().toDestination(); break;
+          case "vibrato": effect = new Tone.Vibrato().toDestination(); break;
+          case "delay": effect = new Tone.FeedbackDelay("8n", 0.5).toDestination(); break;
+        }
+        synth.disconnect();
+        synth.connect(effect);
+        effect.connect(filter);
+      } else {
+        synth.disconnect();
+        synth.connect(filter);
+      }
     });
 
-    function getNoteFromY(y) {
-      const height = window.innerHeight;
-      const position = 1 - (y / height);
-      const scale = scales[currentScale];
-      const tonalityIndex = tonalities.indexOf(currentTonality);
-      const totalNotes = scale.length * 2; // 2 octaves
-      const noteIndex = Math.floor(position * totalNotes);
-      const octave = 3 + Math.floor(noteIndex / scale.length);
-      const semitone = (scale[noteIndex % scale.length] + tonalityIndex) % 12;
-      const note = tonalities[semitone] + octave;
-      return note;
+    const scales = {
+      major: [0, 2, 4, 5, 7, 9, 11],
+      minor: [0, 2, 3, 5, 7, 8, 10],
+      dorian: [0, 2, 3, 5, 7, 9, 10],
+      phrygian: [0, 1, 3, 5, 7, 8, 10],
+      lydian: [0, 2, 4, 6, 7, 9, 11],
+      mixolydian: [0, 2, 4, 5, 7, 9, 10],
+      aeolian: [0, 2, 3, 5, 7, 8, 10],
+      locrian: [0, 1, 3, 5, 6, 8, 10],
+      harmonicMinor: [0, 2, 3, 5, 7, 8, 11],
+      melodicMinor: [0, 2, 3, 5, 7, 9, 11],
+      pentatonicMajor: [0, 2, 4, 7, 9],
+      pentatonicMinor: [0, 3, 5, 7, 10]
+    };
+
+    const notes = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
+    function getNoteFromPosition(y) {
+      const scale = document.getElementById("scale").value;
+      const tonic = document.getElementById("tonic").value;
+      const octaveRange = 2; // 2 octaves
+      const noteCount = scales[scale].length * octaveRange;
+      const idx = Math.floor((1 - y / window.innerHeight) * noteCount);
+      const tonicIndex = notes.indexOf(tonic);
+      const octave = 3 + Math.floor(idx / scales[scale].length);
+      const pitch = scales[scale][idx % scales[scale].length];
+      return notes[(tonicIndex + pitch) % 12] + octave;
     }
 
-    // Touch / mouse input
-    let active = false;
-    function startSound(y, x) {
-      const note = getNoteFromY(y);
-      synth.triggerAttack(note);
-      updateFilter(x);
+    function handleStart(e) {
+      e.preventDefault();
+      Tone.start();
+      active = true;
+      handleMove(e);
     }
-    function updateSound(y, x) {
+
+    function handleMove(e) {
       if (!active) return;
-      const note = getNoteFromY(y);
-      synth.setNote(note);
-      updateFilter(x);
-    }
-    function stopSound() {
-      synth.triggerRelease();
-    }
-    function updateFilter(x) {
-      const freq = Tone.Frequency(200 + (x / window.innerWidth) * 8000);
-      lowPass.frequency.setValueAtTime(freq, Tone.now());
+      const touch = e.touches ? e.touches[0] : e;
+      const note = getNoteFromPosition(touch.clientY);
+      const freq = Tone.Frequency(note).toFrequency();
+      if (!synth) return;
+      synth.triggerAttack(freq);
+      let cutoff = (touch.clientX / window.innerWidth) * 10000;
+      filter.frequency.setValueAtTime(cutoff, Tone.now());
     }
 
-    window.addEventListener("touchstart", e => {
-      if (e.target.closest("header")) return;
-      active = true;
-      Tone.start();
-      const touch = e.touches[0];
-      startSound(touch.clientY, touch.clientX);
-    });
-    window.addEventListener("touchmove", e => {
-      if (active) {
-        const touch = e.touches[0];
-        updateSound(touch.clientY, touch.clientX);
-      }
-    });
-    window.addEventListener("touchend", () => {
+    function handleEnd() {
       active = false;
-      stopSound();
-    });
-    window.addEventListener("mousedown", e => {
-      if (e.target.closest("header")) return;
-      active = true;
-      Tone.start();
-      startSound(e.clientY, e.clientX);
-    });
-    window.addEventListener("mousemove", e => {
-      if (active) {
-        updateSound(e.clientY, e.clientX);
-      }
-    });
-    window.addEventListener("mouseup", () => {
-      active = false;
-      stopSound();
-    });
+      if (synth) synth.triggerRelease();
+    }
+
+    document.addEventListener("touchstart", handleStart);
+    document.addEventListener("touchmove", handleMove);
+    document.addEventListener("touchend", handleEnd);
+
+    document.addEventListener("mousedown", handleStart);
+    document.addEventListener("mousemove", handleMove);
+    document.addEventListener("mouseup", handleEnd);
   </script>
 </body>
 </html>
