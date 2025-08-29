@@ -6,22 +6,22 @@
 <title>Melodic Feed</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Billabong&display=swap');
-body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Ubuntu,sans-serif; background:#121212; color:#eee; margin:0; padding:0;}
-header { display:flex; justify-content:space-between; align-items:center; padding:10px 20px; background:#1e1e1e; border-bottom:1px solid #333; position:sticky; top:0; z-index:1000;}
-header h1 { font-family:'Billabong', cursive; font-size:28px; margin:0; color:#fff;}
-.menu-container { position:relative; }
-.menu-icon { cursor:pointer; font-size:22px; color:#fff; }
-.dropdown { display:none; position:absolute; top:40px; right:0; background:#1e1e1e; border:1px solid #333; border-radius:6px; padding:10px; z-index:1001;}
-.dropdown select { width:150px; margin-bottom:8px; padding:5px; background:#222; color:#eee; border:1px solid #555; border-radius:4px; }
-.feed { max-width:600px; margin:20px auto; padding:0; }
-.post { background:#1e1e1e; border-radius:8px; padding:15px; margin-bottom:15px; box-shadow:0 2px 6px rgba(0,0,0,0.5); border:1px solid #333;}
-.post-header { display:flex; align-items:center; margin-bottom:10px;}
-.avatar { width:40px; height:40px; border-radius:50%; background:#3a3a3a; color:#fff; display:flex; align-items:center; justify-content:center; margin-right:10px;}
-.actions { display:flex; justify-content:space-around; margin-top:10px; }
-.actions button { background:none; border:none; cursor:pointer; color:#eee; font-size:18px; }
-.actions button:hover { color:#ff4081; }
-.skeleton-post { background:#1e1e1e; border-radius:8px; padding:15px; margin-bottom:15px; height:150px; animation:pulse 1.5s infinite; border:1px solid #333;}
-@keyframes pulse {0%{opacity:0.6;}50%{opacity:1;}100%{opacity:0.6;}}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;margin:0;background:#121212;color:#eee;}
+header{display:flex;justify-content:space-between;align-items:center;padding:10px 20px;background:#1e1e1e;border-bottom:1px solid #333;position:sticky;top:0;z-index:1000;}
+header h1{font-family:'Billabong',cursive;font-size:28px;margin:0;color:#fff;}
+.menu-container{position:relative;}
+.menu-icon{cursor:pointer;font-size:22px;color:#fff;}
+.dropdown{display:none;position:absolute;top:40px;right:0;background:#1e1e1e;border:1px solid #333;border-radius:6px;padding:10px;z-index:1001;}
+.dropdown select{width:150px;margin-bottom:8px;padding:5px;background:#222;color:#eee;border:1px solid #555;border-radius:4px;}
+.feed{max-width:600px;margin:20px auto;padding:0;}
+.post{background:#1e1e1e;border-radius:8px;padding:15px;margin-bottom:15px;box-shadow:0 2px 6px rgba(0,0,0,0.5);border:1px solid #333;}
+.post-header{display:flex;align-items:center;margin-bottom:10px;}
+.avatar{width:40px;height:40px;border-radius:50%;background:#3a3a3a;color:#fff;display:flex;align-items:center;justify-content:center;margin-right:10px;}
+.actions{display:flex;justify-content:space-around;margin-top:10px;}
+.actions button{background:none;border:none;cursor:pointer;color:#eee;font-size:18px;}
+.actions button:hover{color:#ff4081;}
+.skeleton-post{background:#1e1e1e;border-radius:8px;padding:15px;margin-bottom:15px;height:150px;animation:pulse 1.5s infinite;border:1px solid #333;}
+@keyframes pulse{0%{opacity:0.6;}50%{opacity:1;}100%{opacity:0.6;}}
 </style>
 </head>
 <body>
@@ -81,92 +81,46 @@ const scales={ major:[0,2,4,5,7,9,11], minor:[0,2,3,5,7,8,10], dorian:[0,2,3,5,7
 const tonalities=["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
 let currentScale="major",currentTonality="C";
 
+// --- Tone.js setup ---
 let synth,effectNode,lowPass=new Tone.Filter(20000,"lowpass").toDestination();
 createSynth("Synth");
-
 function createSynth(type="Synth"){ if(synth)synth.dispose(); synth=new Tone.PolySynth(Tone.Synth).connect(lowPass);}
 function applyEffect(type){
-if(effectNode){ effectNode.dispose(); synth.disconnect(); synth.connect(lowPass);}
-if(type!=="none"){ switch(type){
-case "reverb": effectNode=new Tone.Reverb().toDestination(); break;
-case "chorus": effectNode=new Tone.Chorus().toDestination(); break;
-case "distortion": effectNode=new Tone.Distortion(0.4).toDestination(); break;
-case "tremolo": effectNode=new Tone.Tremolo().start().toDestination(); break;
-case "vibrato": effectNode=new Tone.Vibrato().toDestination(); break;
-case "delay": effectNode=new Tone.FeedbackDelay("8n",0.5).toDestination(); break; }
-synth.disconnect(); synth.connect(effectNode);}
+  if(effectNode){ effectNode.dispose(); synth.disconnect(); synth.connect(lowPass);}
+  if(type!=="none"){switch(type){
+    case "reverb": effectNode=new Tone.Reverb().toDestination();break;
+    case "chorus": effectNode=new Tone.Chorus().toDestination();break;
+    case "distortion": effectNode=new Tone.Distortion(0.4).toDestination();break;
+    case "tremolo": effectNode=new Tone.Tremolo().start().toDestination();break;
+    case "vibrato": effectNode=new Tone.Vibrato().toDestination();break;
+    case "delay": effectNode=new Tone.FeedbackDelay("8n",0.5).toDestination();break;
+  }
+  synth.disconnect(); synth.connect(effectNode);}
 }
 
-document.getElementById("instrumentSelect").addEventListener("change",e=>{createSynth(e.target.value); applyEffect(document.getElementById("effectSelect").value);});
+document.getElementById("instrumentSelect").addEventListener("change",e=>{createSynth(e.target.value);applyEffect(document.getElementById("effectSelect").value);});
 document.getElementById("effectSelect").addEventListener("change",e=>applyEffect(e.target.value));
 document.getElementById("scaleSelect").addEventListener("change",e=>currentScale=e.target.value);
 document.getElementById("tonalitySelect").addEventListener("change",e=>currentTonality=e.target.value);
 
-// --- Multi-touch ---
-function getNoteFromY(y){
-  const height=window.innerHeight;
-  const position=1-(y/height);
-  const scale=scales[currentScale];
-  const tonalityIndex=tonalities.indexOf(currentTonality);
-  const totalNotes=scale.length*2;
-  const noteIndex=Math.floor(position*totalNotes);
-  const octave=3+Math.floor(noteIndex/scale.length);
-  const semitone=(scale[noteIndex%scale.length]+tonalityIndex)%12;
-  return tonalities[semitone]+octave;
-}
+// --- Multi-touch harmonized ---
+function getNoteFromY(y){const height=window.innerHeight; const position=1-(y/height); const scale=scales[currentScale]; const tonalityIndex=tonalities.indexOf(currentTonality); const totalNotes=scale.length*2; const noteIndex=Math.floor(position*totalNotes); const octave=3+Math.floor(noteIndex/scale.length); const semitone=(scale[noteIndex%scale.length]+tonalityIndex)%12; return tonalities[semitone]+octave;}
+function getIntervalsForFinger(note,fingerIndex){const scale=scales[currentScale]; const tonalityIndex=tonalities.indexOf(currentTonality); const baseNote=note.slice(0,-1); const octave=parseInt(note.slice(-1)); let baseSemitone=tonalities.indexOf(baseNote); let notes=[note]; for(let i=1;i<=fingerIndex;i++){const interval=scale[(baseSemitone+i*2)%scale.length]; notes.push(tonalities[(interval+tonalityIndex)%12]+octave);} return notes;}
+function updateSynthFromTouches(){synth.releaseAll(); let idx=0; for(const t of Object.values(activeTouches)){const notes=getIntervalsForFinger(getNoteFromY(t.y),idx); notes.forEach(n=>synth.triggerAttackRelease(n,"0.5")); idx++; if(idx>=3) break;}}
+function updateFilterFromX(x){const freq=200+(x/window.innerWidth)*8000; lowPass.frequency.setValueAtTime(freq,Tone.now());}
 
-function getIntervalsForFinger(note,fingerIndex){
-  const scale=scales[currentScale];
-  const tonalityIndex=tonalities.indexOf(currentTonality);
-  const baseSemitone=tonalities.indexOf(note.slice(0,-1));
-  const octave=parseInt(note.slice(-1));
-  let notes=[note];
-  for(let i=1;i<=fingerIndex;i++){
-    const interval=scale[(scale.indexOf(baseSemitone%12)+i*2)%scale.length];
-    notes.push(tonalities[(interval+tonalityIndex)%12]+octave);
-  }
-  return notes;
-}
+window.addEventListener("touchstart",e=>{Tone.start(); for(let t of e.changedTouches) activeTouches[t.identifier]={x:t.clientX,y:t.clientY}; Object.values(activeTouches).forEach(t=>updateFilterFromX(t.x)); updateSynthFromTouches();});
+window.addEventListener("touchmove",e=>{for(let t of e.changedTouches) activeTouches[t.identifier]={x:t.clientX,y:t.clientY}; Object.values(activeTouches).forEach(t=>updateFilterFromX(t.x)); updateSynthFromTouches();});
+window.addEventListener("touchend",e=>{for(let t of e.changedTouches) delete activeTouches[t.identifier]; updateSynthFromTouches();});
 
-function updateSynthFromTouches(){
-  synth.releaseAll();
-  Object.values(activeTouches).forEach((t,idx)=>{
-    const note=getNoteFromY(t.y);
-    const notesToPlay=getIntervalsForFinger(note,idx);
-    notesToPlay.forEach(n=>synth.triggerAttackRelease(n,"0.5"));
-  });
-}
-
-function updateFilterFromX(x){
-  const freq=Tone.Frequency(200 + (x/window.innerWidth)*8000);
-  lowPass.frequency.setValueAtTime(freq,Tone.now());
-}
-
-window.addEventListener("touchstart",e=>{
-  Tone.start();
-  for(let t of e.changedTouches) activeTouches[t.identifier]={x:t.clientX,y:t.clientY};
-  Object.values(activeTouches).forEach(t=>updateFilterFromX(t.x));
-  updateSynthFromTouches();
-});
-window.addEventListener("touchmove",e=>{
-  for(let t of e.changedTouches) activeTouches[t.identifier]={x:t.clientX,y:t.clientY};
-  Object.values(activeTouches).forEach(t=>updateFilterFromX(t.x));
-  updateSynthFromTouches();
-});
-window.addEventListener("touchend",e=>{
-  for(let t of e.changedTouches) delete activeTouches[t.identifier];
-  updateSynthFromTouches();
-});
-
-// --- Posts ---
+// --- Posts generation ---
 function renderMedia(filePath){
   if(!filePath) return "";
   const ext=filePath.split('.').pop().toLowerCase();
   if(["jpg","jpeg","png"].includes(ext)) return `<div style="margin-top:10px;"><img src="${filePath}" style="width:100%;border-radius:8px;"></div>`;
-  if(ext==="mp4") return `<div style="margin-top:10px;"><video src="${filePath}" controls style="width:100%;border-radius:8px;" volume="0.2"></video></div>`;
+  if(ext==="mp4") return `<div style="margin-top:10px;"><video src="${filePath}" autoplay muted loop style="width:100%;border-radius:8px;opacity:0.7;"></video></div>`;
   return "";
 }
-
 function generatePost(){
   if(!mediaList || mediaList.length===0) return null;
   let postData=null, attempts=0;
@@ -177,41 +131,26 @@ function generatePost(){
   }
   return postData;
 }
-
 function createPost(postData){
   if(!postData) return null;
-  const div=document.createElement('div');
-  div.className='post';
-  div.innerHTML=`<div class="post-header"><div class="avatar">${postData.name[0]}</div>
-  <div><strong>${postData.name}</strong><div style="font-size:12px;color:#999;">${postData.time}</div></div></div>
-  <div>${postData.text}</div>${renderMedia(postData.media)}
-  <div class="actions"><button>❤️</button><button>💬</button><button>📤</button></div>`;
+  const div=document.createElement('div'); div.className='post';
+  div.innerHTML=`<div class="post-header"><div class="avatar">${postData.name[0]}</div><div><strong>${postData.name}</strong><div style="font-size:12px;color:#999;">${postData.time}</div></div></div>
+  <div>${postData.text}</div>${renderMedia(postData.media)}<div class="actions"><button>❤️</button><button>💬</button><button>📤</button></div>`;
   return div;
 }
-
 function loadMore(){
-  if(isLoading) return;
-  isLoading=true;
-  const container=document.getElementById('posts-container');
-  const skeletons=[];
-  for(let i=0;i<5;i++){
-    const s=document.createElement('div'); s.className='skeleton-post';
-    container.appendChild(s); skeletons.push(s);
-  }
-  setTimeout(()=>{
-    skeletons.forEach(s=>{
-      const post=generatePost();
-      if(post){ const e=createPost(post); if(e) s.replaceWith(e); else s.remove(); }
-      else s.remove();
-    });
-    isLoading=false;
-  },800);
+  if(isLoading) return; isLoading=true;
+  const container=document.getElementById('posts-container'); const skeletons=[];
+  for(let i=0;i<5;i++){const s=document.createElement('div'); s.className='skeleton-post'; container.appendChild(s); skeletons.push(s);}
+  setTimeout(()=>{skeletons.forEach(s=>{const post=generatePost(); if(post){const e=createPost(post); if(e)s.replaceWith(e); else s.remove();}else s.remove();}); isLoading=false;},800);
 }
-
 const sentinel=document.getElementById('sentinel');
-const observer=new IntersectionObserver(entries=>{ if(entries[0].isIntersecting) loadMore(); },{rootMargin:'200px'});
+const observer=new IntersectionObserver(entries=>{if(entries[0].isIntersecting) loadMore();},{rootMargin:'200px'});
 observer.observe(sentinel);
-window.addEventListener('DOMContentLoaded',()=>{ loadMore(); setTimeout(()=>loadMore(),100); });
+window.addEventListener('DOMContentLoaded',()=>{loadMore(); setTimeout(()=>loadMore(),100);});
+
+// --- Menu toggle ---
+document.querySelector('.menu-icon').addEventListener('click',()=>{const d=document.querySelector('.dropdown'); d.style.display=d.style.display==='block'?'none':'block';});
 </script>
 </body>
 </html>
