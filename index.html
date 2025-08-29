@@ -137,7 +137,7 @@ pentatonicMinor:[0,3,5,7,10]
 const tonalities=["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
 let postId=0, isLoading=false;
 let activeTouches={};
-let arpeggioNotes=[], arpeggioIndex=0, arpeggioInterval=null;
+let arpeggioNotes=[], arpeggioInterval=null;
 
 // --- Tone.js ---
 function createSynth(type="Synth"){ if(synth) synth.dispose(); synth=new Tone[type]().toDestination(); }
@@ -161,7 +161,7 @@ document.getElementById("tonalitySelect").addEventListener("change", e=>currentT
 function renderMedia(filePath){
   const ext=filePath.split(".").pop().toLowerCase();
   if(["jpg","jpeg","png"].includes(ext)) return `<img src="${filePath}" style="width:100%; border-radius:8px;">`;
-  if(ext==="mp4") return `<video src="${filePath}" style="width:100%; border-radius:8px;" muted preload="metadata"></video>`;
+  if(ext==="mp4") return `<video src="${filePath}" style="width:100%; border-radius:8px;" preload="metadata"></video>`;
   return "";
 }
 function generatePost(){
@@ -176,8 +176,13 @@ function createPost(postData){
   const div=document.createElement("div"); div.className="post";
   div.innerHTML=`<div class="post-header"><div class="avatar">${postData.name[0]}</div><div><strong>${postData.name}</strong></div></div>
   <div>${postData.text}</div>${postData.media?renderMedia(postData.media):""}<div class="post-actions"><button class="action-btn like-btn">❤️</button></div>`;
+
   const video=div.querySelector("video");
-  if(video){ video.pause(); video.volume=0.2; video.addEventListener("click",()=>video.paused?video.play():video.pause()); }
+  if(video){
+    video.pause();              // Pausado por defecto
+    video.volume=0.2;           // Volumen normalizado
+    video.addEventListener("click",()=>video.paused?video.play():video.pause()); // Reproducible al tocar
+  }
   return div;
 }
 function loadMore(){ if(isLoading) return; isLoading=true;
@@ -186,37 +191,34 @@ function loadMore(){ if(isLoading) return; isLoading=true;
   isLoading=false;
 }
 const sentinel=document.getElementById("sentinel");
-const observer=new IntersectionObserver(entries=>{if(entries[0].isIntersecting) loadMore();},{rootMargin:"200px 0px"});
-observer.observe(sentinel);
+new IntersectionObserver(entries=>{if(entries[0].isIntersecting) loadMore();},{rootMargin:"200px 0px"}).observe(sentinel);
 
 // --- Arpeggiator ---
-function stopArpeggio(){ if(arpeggioInterval){clearInterval(arpeggioInterval); arpeggioInterval=null; activeTouches={}; } }
-function startArpeggio(rootNoteY){
+function startArpeggio(baseY){
   stopArpeggio();
-  const rootNote=getNoteFromY(rootNoteY);
-  const scaleIntervals=scales[currentScale];
+  const note=getNoteFromY(baseY);
+  const scale= scales[currentScale]; const tonalityIndex=tonalities.indexOf(currentTonality);
   arpeggioNotes=[];
-  const rootIndex=tonalities.indexOf(rootNote.replace(/[0-9]/g,""));
-  const rootOctave=parseInt(rootNote[rootNote.length-1]);
-  for(let i=0;i<8;i++){
-    const step=(i*2)%scaleIntervals.length;
-    const semitone=(scaleIntervals[step]+rootIndex)%12;
-    const octave=rootOctave+Math.floor((i*2)/scaleIntervals.length);
-    arpeggioNotes.push(tonalities[semitone]+octave);
-  }
+  for(let i=0;i<8;i++){ const semitone=(scale[(i*2)%scale.length]+tonalityIndex)%12; const octave=3+Math.floor((i*2)/scale.length); arpeggioNotes.push(tonalities[semitone]+octave);}
   const bpm=parseInt(document.getElementById("arpeggioBPM").value)||120;
   const intervalMs=60000/bpm;
   let idx=0;
+  const type=document.getElementById("arpeggioType").value;
   arpeggioInterval=setInterval(()=>{
+    synth.triggerRelease();
     synth.triggerAttackRelease(arpeggioNotes[idx],"8n");
-    idx=(idx+1)%arpeggioNotes.length;
-  }, intervalMs);
+    if(type==="up") idx=(idx+1)%arpeggioNotes.length;
+    if(type==="down") idx=(idx-1+arpeggioNotes.length)%arpeggioNotes.length;
+    if(type==="random") idx=Math.floor(Math.random()*arpeggioNotes.length);
+  },intervalMs);
 }
+function stopArpeggio(){ if(arpeggioInterval){clearInterval(arpeggioInterval); arpeggioInterval=null; } }
 
 // --- Touch ---
 function getNoteFromY(y){
   const pos=1-(y/window.innerHeight);
-  const scale=scales[currentScale]; const tonalityIndex=tonalities.indexOf(currentTonality);
+  const scale=scales[currentScale];
+  const tonalityIndex=tonalities.indexOf(currentTonality);
   const totalNotes=scale.length*2;
   const noteIndex=Math.floor(pos*totalNotes);
   const octave=3+Math.floor(noteIndex/scale.length);
@@ -225,17 +227,48 @@ function getNoteFromY(y){
 }
 window.addEventListener("touchstart", e=>{
   Tone.start();
-  if(e.touches.length===1) playSingle(e.touches[0].clientY);
-  if(e.touches.length===2) startArpeggio(e.touches[0].clientY);
+  if(e.touches.length===1){
+    const t=e.touches[0];
+    const note=getNoteFromY(t.clientY);
+    synth.triggerAttack(note);
+    activeTouches[t.identifier]=note;
+  }
+  if(e.touches.length===2){
+    startArpeggio(e.touches[0].clientY);
+  }
 });
-function playSingle(y){ stopArpeggio(); const note=getNoteFromY(y); synth.triggerAttack(note); activeTouches["touch"]=note; }
-window.addEventListener("touchend", e=>{ stopArpeggio(); for(let t of e.changedTouches) if(activeTouches["touch"]) synth.triggerRelease(activeTouches["touch"]); activeTouches={};});
+window.addEventListener("touchmove", e=>{
+  for(let t of e.touches){
+    if(activeTouches[t.identifier]){
+      const newNote=getNoteFromY(t.clientY);
+      if(newNote!==activeTouches[t.identifier]){
+        synth.triggerRelease(activeTouches[t.identifier]);
+        synth.triggerAttack(newNote);
+        activeTouches[t.identifier]=newNote;
+      }
+    }
+  }
+});
+window.addEventListener("touchend", e=>{
+  for(let t of e.changedTouches){
+    if(activeTouches[t.identifier]){
+      synth.triggerRelease(activeTouches[t.identifier]);
+      delete activeTouches[t.identifier];
+    }
+  }
+  if(Object.keys(activeTouches).length===0) stopArpeggio();
+});
 
 // --- Menu toggle ---
-document.querySelector(".menu-icon").addEventListener("click",()=>{const d=document.querySelector(".dropdown"); d.style.display=d.style.display==="block"?"none":"block";});
+document.querySelector(".menu-icon").addEventListener("click",()=>{
+  const d=document.querySelector(".dropdown");
+  d.style.display=d.style.display==="block"?"none":"block";
+});
 
 // --- Init ---
-createSynth(); applyEffect("none"); loadMore();
+createSynth();
+applyEffect("none");
+loadMore();
 </script>
 </body>
 </html>
