@@ -1,51 +1,87 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Melodic Feed Optimized</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Melodic Feed — Tone.js (Optimized)</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Billabong&display=swap');
-body, .feed { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif; margin:0; background:#121212; color:#e0e0e0; overflow-x:hidden; }
-.header { background:#1f1f1f; padding:10px; box-shadow:0 1px 3px rgba(0,0,0,0.7); position:sticky; top:0; z-index:100; display:flex; align-items:center; gap:5px; flex-wrap:wrap; }
-.header h1 { font-family:'Billabong',cursive; font-size:32px; color:#e0e0e0; margin:0; flex:1; }
-.menu-btn { background:none;border:none;color:#e0e0e0;font-size:22px;cursor:pointer; }
-.dropdown { display:none; position:absolute; top:40px; left:0; background:#1f1f1f; padding:10px; border-radius:8px; z-index:200; max-width:180px; }
-.dropdown label, .dropdown select, .dropdown input { color:#e0e0e0; margin-right:5px; font-size:14px; }
-.feed { max-width:600px; margin:20px auto; padding:0; }
-.post { background:#1e1e1e; border-radius:8px; padding:15px; margin-bottom:15px; box-shadow:0 0 1px rgba(0,0,0,0.5); border:1px solid #333; }
-.post-header { display:flex; align-items:center; margin-bottom:10px; }
-.avatar { width:40px; height:40px; border-radius:50%; background:#3a3a3a; color:#fff; display:flex; align-items:center; justify-content:center; margin-right:10px; }
-.post-actions { display:flex; gap:10px; margin-top:10px; padding-top:10px; border-top:1px solid #444; }
-.action-btn { flex:1; padding:8px; border:none; background:none; cursor:pointer; color:#b3b3b3; font-weight:bold; text-align:center; font-size:14px; }
-.action-btn:hover { background:#333; border-radius:4px; }
-.action-btn.liked { color:#ed4956; }
-.skeleton-post { background:#1e1e1e; border-radius:8px; padding:15px; margin-bottom:15px; height:150px; animation:pulse 1.5s infinite; border:1px solid #333; }
-@keyframes pulse {0%{opacity:0.6}50%{opacity:1}100%{opacity:0.6}}
-#touch-visual { position:fixed; width:30px; height:30px; background:#ff5f6d; border-radius:50%; top:0; left:0; pointer-events:none; opacity:0.5; transform:translate(-50%,-50%); display:none; z-index:300; }
-#note-display { position:fixed; top:10px; right:10px; color:#ff5f6d; font-size:18px; font-weight:bold; z-index:400; }
-img, video { user-select:none; -webkit-user-drag:none; touch-action:none; }
+:root{--bg:#121212;--card:#1e1e1e;--muted:#999;--accent:#ff5f6d}
+html,body{height:100%;margin:0;background:var(--bg);color:#e0e0e0;font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;}
+.header{background:#1f1f1f;padding:10px;box-shadow:0 1px 3px rgba(0,0,0,.6);position:sticky;top:0;z-index:200;display:flex;align-items:center;gap:.5rem;flex-wrap:wrap}
+.header h1{font-family:'Billabong',cursive;font-size:32px;margin:0;flex:1}
+.menu-btn{background:none;border:none;color:#e0e0e0;font-size:20px;cursor:pointer;padding:6px}
+.dropdown{display:none;position:absolute;top:46px;left:0;background:#191919;padding:10px;border-radius:8px;z-index:300;min-width:160px}
+.dropdown label, .dropdown select, .dropdown input{color:#e0e0e0;font-size:14px}
+.feed{max-width:600px;margin:20px auto;padding:0}
+.post{background:var(--card);border-radius:8px;padding:15px;margin-bottom:15px;box-shadow:0 0 1px rgba(0,0,0,.5);border:1px solid #333}
+.post-header{display:flex;align-items:center;margin-bottom:10px}
+.avatar{width:40px;height:40px;border-radius:50%;background:#3a3a3a;color:#fff;display:flex;align-items:center;justify-content:center;margin-right:10px}
+.post-actions{display:flex;gap:10px;margin-top:10px;padding-top:10px;border-top:1px solid #444}
+.action-btn{flex:1;padding:8px;border:none;background:none;cursor:pointer;color:#b3b3b3;font-weight:bold;text-align:center;font-size:14px}
+.action-btn:hover{background:#333;border-radius:4px}
+.action-btn.liked{color:#ed4956}
+.skeleton-post{background:var(--card);border-radius:8px;padding:15px;margin-bottom:15px;height:120px;animation:pulse 1.4s infinite;border:1px solid #333}
+@keyframes pulse{0%{opacity:.6}50%{opacity:1}100%{opacity:.6}}
+#touch-visual{position:fixed;width:34px;height:34px;border-radius:50%;background:var(--accent);opacity:.45;transform:translate(-50%,-50%);pointer-events:none;display:none;z-index:400}
+#note-display{position:fixed;top:8px;right:8px;color:var(--accent);font-weight:600;z-index:410}
+img,video{user-select:none;-webkit-user-drag:none;touch-action:none;max-width:100%;border-radius:8px}
+select{background:#101010;border:1px solid #2b2b2b;color:#e0e0e0;padding:6px;border-radius:6px}
 </style>
 </head>
 <body>
 
 <div class="header">
   <h1>🎵 MeloFeed</h1>
-  <div style="position:relative;"><button class="menu-btn" id="menu-instr">🎹</button>
+
+  <div style="position:relative">
+    <button class="menu-btn" id="menu-instr">🎹</button>
     <div class="dropdown" id="instr-dropdown">
-      <label>Instrument:</label>
+      <label>Instrument</label><br>
       <select id="instrument-select">
-        <option value="Piano">Piano</option>
-        <option value="Guitar">Guitar</option>
-        <option value="Flute">Flute</option>
+        <option value="Synth">Classic Synth</option>
+        <option value="FMSynth">FM Synth</option>
+        <option value="AMSynth">AM Synth</option>
+        <option value="MembraneSynth">Membrane</option>
       </select>
     </div>
   </div>
-  <div style="position:relative;"><button class="menu-btn" id="menu-effects">🎛️</button>
+
+  <div style="position:relative">
+    <button class="menu-btn" id="menu-effects">🎛️</button>
     <div class="dropdown" id="effects-dropdown">
-      <label><input type="checkbox" class="effect-toggle" value="Reverb"> Reverb</label><br>
-      <label><input type="checkbox" class="effect-toggle" value="Chorus"> Chorus</label><br>
-      <label><input type="checkbox" class="effect-toggle" value="Delay"> Delay</label>
+      <label>Effect (one)</label><br>
+      <label><input type="radio" name="effect" value="none" checked> None</label><br>
+      <label><input type="radio" name="effect" value="Reverb"> Reverb</label><br>
+      <label><input type="radio" name="effect" value="Chorus"> Chorus</label><br>
+      <label><input type="radio" name="effect" value="Distortion"> Distortion</label><br>
+      <label><input type="radio" name="effect" value="Tremolo"> Tremolo</label><br>
+      <label><input type="radio" name="effect" value="Vibrato"> Vibrato</label><br>
+      <label><input type="radio" name="effect" value="Delay"> Delay</label>
+    </div>
+  </div>
+
+  <div style="position:relative">
+    <button class="menu-btn" id="menu-scale">🎼</button>
+    <div class="dropdown" id="scale-dropdown">
+      <label>Scale</label><br>
+      <select id="scale-select">
+        <option>Major</option><option>Minor</option><option>Dorian</option><option>Phrygian</option>
+        <option>Lydian</option><option>Mixolydian</option><option>Aeolian</option><option>Locrian</option>
+        <option>Harmonic Minor</option><option>Major Pentatonic</option><option>Minor Pentatonic</option>
+      </select>
+    </div>
+  </div>
+
+  <div style="position:relative">
+    <button class="menu-btn" id="menu-tonic">🔑</button>
+    <div class="dropdown" id="tonic-dropdown">
+      <label>Tonic</label><br>
+      <select id="tonic-select">
+        <option>C</option><option>C#</option><option>D</option><option>D#</option><option>E</option>
+        <option>F</option><option>F#</option><option>G</option><option>G#</option>
+        <option>A</option><option>A#</option><option>B</option>
+      </select>
     </div>
   </div>
 </div>
@@ -58,112 +94,413 @@ img, video { user-select:none; -webkit-user-drag:none; touch-action:none; }
 <div id="touch-visual"></div>
 <div id="note-display"></div>
 
+<!-- Tone.js (we will use it for synths and effects, but manage nodes to avoid saturation) -->
+<script src="https://cdn.jsdelivr.net/npm/tone@next/build/Tone.js"></script>
+
+<!-- media list (your file) -->
 <script src="media-list.js"></script>
+
 <script>
-// --- Posts ---
-let postId=0,isLoading=false;
-function generatePost(){
-  const names=['Emma','Liam','Olivia','Noah','Ava'];
-  const texts=['Having a great day!','Check this view!','Coffee time','Working on something','Weekend vibes'];
-  const media=(typeof mediaList!=='undefined' && mediaList.length>0 && Math.random()>0.5)?mediaList[Math.floor(Math.random()*mediaList.length)]:null;
-  return {id:postId++,name:names[Math.floor(Math.random()*names.length)],text:texts[Math.floor(Math.random()*texts.length)],time:'2h ago',media};
+/* ---------------------------
+   Keep UI & posts functionality (unchanged)
+   --------------------------- */
+let postId = 0, isLoading = false;
+function genPost(){
+  const names = ['Emma','Liam','Olivia','Noah','Ava'];
+  const texts = ['Having a great day! 😊','Check this view! 🌅','Coffee time ☕','Working on something exciting! 🚀','Weekend vibes 🎉'];
+  const media = (typeof mediaList !== 'undefined' && mediaList.length > 0 && Math.random() > 0.5) ? mediaList[Math.floor(Math.random()*mediaList.length)] : null;
+  return { id: postId++, name: names[Math.floor(Math.random()*names.length)], text: texts[Math.floor(Math.random()*texts.length)], time: '2 hours ago', media };
+}
+function renderMedia(p){
+  if(!p) return '';
+  const ext = p.split('.').pop().toLowerCase();
+  if(['jpg','jpeg','png'].includes(ext)) return `<div style="margin-top:10px;"><img src="${p}" alt="post image"></div>`;
+  if(ext === 'mp4') return `<div style="margin-top:10px;"><video src="${p}" controls playsinline></video></div>`;
+  return '';
 }
 function createPost(data){
-  const post=document.createElement('div'); post.className='post';
-  post.dataset.postId=data.id;
-  post.innerHTML=`<div class="post-header"><div class="avatar">${data.name[0]}</div><div><strong>${data.name}</strong><div style="font-size:12px;color:#999;">${data.time}</div></div></div>
-  <div>${data.text}</div>${data.media?`<div style="margin-top:10px;">${data.media.endsWith('.mp4')?`<video src="${data.media}" controls style="width:100%;border-radius:8px;"></video>`:`<img src="${data.media}" style="width:100%;border-radius:8px;">`}</div>`:''}
-  <div class="post-actions"><button class="action-btn like-btn">👍 Like</button><button class="action-btn">💬 Comment</button><button class="action-btn">📤 Share</button></div>`;
-  post.querySelector('.like-btn').addEventListener('click',()=>{post.querySelector('.like-btn').classList.toggle('liked');});
-  return post;
+  const d = document.createElement('div'); d.className = 'post';
+  d.dataset.postId = data.id;
+  d.innerHTML = `<div class="post-header"><div class="avatar">${data.name[0]}</div><div><div><strong>${data.name}</strong></div><div style="font-size:12px;color:${getComputedStyle(document.documentElement).getPropertyValue('--muted')||'#999'}">${data.time}</div></div></div>
+    <div>${data.text}</div>${renderMedia(data.media)}
+    <div class="post-actions"><button class="action-btn like-btn" aria-pressed="false">👍 Like</button><button class="action-btn">💬 Comment</button><button class="action-btn">📤 Share</button></div>`;
+  d.querySelector('.like-btn').addEventListener('click', function(){ this.classList.toggle('liked'); const s = this.classList.contains('liked'); this.setAttribute('aria-pressed', s); this.textContent = s ? '❤️ Liked' : '👍 Like'; });
+  return d;
 }
 function loadMore(){
-  if(isLoading)return;
-  isLoading=true;
-  const container=document.getElementById('posts-container');
-  const feed=document.querySelector('.feed'); feed.setAttribute('aria-busy','true');
-  const skeletons=[];
-  for(let i=0;i<5;i++){const s=document.createElement('div'); s.className='skeleton-post'; container.appendChild(s); skeletons.push(s);}
-  setTimeout(()=>{
-    skeletons.forEach(s=>{
-      const post=createPost(generatePost());
-      s.replaceWith(post);
-    });
-    feed.setAttribute('aria-busy','false'); isLoading=false;
-  },800);
+  if(isLoading) return;
+  isLoading = true;
+  const container = document.getElementById('posts-container');
+  const feed = document.querySelector('.feed'); feed.setAttribute('aria-busy','true');
+  const skeletons = [];
+  for(let i=0;i<4;i++){ const s = document.createElement('div'); s.className = 'skeleton-post'; container.appendChild(s); skeletons.push(s); }
+  setTimeout(()=>{ skeletons.forEach(s=>{ const p = genPost(); s.replaceWith(createPost(p)); }); feed.setAttribute('aria-busy','false'); isLoading=false; }, 700);
 }
-window.addEventListener('DOMContentLoaded',()=>{
-  const sentinel=document.getElementById('sentinel');
-  const observer=new IntersectionObserver(entries=>{if(entries[0].isIntersecting) loadMore();},{rootMargin:'200px 0px'});
-  observer.observe(sentinel); loadMore(); setTimeout(()=>loadMore(),100);
+window.addEventListener('DOMContentLoaded', ()=>{
+  const sentinel = document.getElementById('sentinel');
+  const observer = new IntersectionObserver(entries=>{ if(entries[0].isIntersecting) loadMore(); }, { rootMargin: '200px 0px' });
+  observer.observe(sentinel);
+  loadMore(); setTimeout(()=>loadMore(),120);
 });
 
-// --- Menus ---
-const menuMap={'menu-instr':'instr-dropdown','menu-effects':'effects-dropdown'};
-for(const btnId in menuMap){
-  const btn=document.getElementById(btnId), dd=document.getElementById(menuMap[btnId]);
-  btn.addEventListener('click',()=>{for(const otherId in menuMap) if(otherId!==btnId) document.getElementById(menuMap[otherId]).style.display='none'; dd.style.display=(dd.style.display==='none'?'block':'none');});
+/* ---------------------------
+   UI Dropdown behavior
+   --------------------------- */
+const menuMap = { 'menu-instr':'instr-dropdown', 'menu-effects':'effects-dropdown', 'menu-scale':'scale-dropdown', 'menu-tonic':'tonic-dropdown' };
+Object.keys(menuMap).forEach(btnId => {
+  const btn = document.getElementById(btnId);
+  const dd = document.getElementById(menuMap[btnId]);
+  btn.addEventListener('click', () => {
+    // close others
+    Object.keys(menuMap).forEach(k => { if(k !== btnId) document.getElementById(menuMap[k]).style.display = 'none'; });
+    dd.style.display = dd.style.display === 'block' ? 'none' : 'block';
+  });
+});
+const instrumentSelect = document.getElementById('instrument-select');
+const scaleSelect = document.getElementById('scale-select');
+const tonicSelect = document.getElementById('tonic-select');
+let selectedInstrument = instrumentSelect.value || 'Synth';
+let selectedScale = scaleSelect.value || 'Major';
+let selectedTonic = tonicSelect.value || 'C';
+
+instrumentSelect.addEventListener('change', e => { selectedInstrument = e.target.value; setupVoices(); });
+scaleSelect.addEventListener('change', e => { selectedScale = e.target.value; });
+tonicSelect.addEventListener('change', e => { selectedTonic = e.target.value; });
+
+/* Effects radio */
+let enabledEffect = 'none';
+document.querySelectorAll('input[name="effect"]').forEach(r => r.addEventListener('change', e => { enabledEffect = e.target.value; applyEffectSelection(); }));
+
+/* ---------------------------
+   Scales data (2 octaves)
+   --------------------------- */
+const SCALES = {
+  'Major':[0,2,4,5,7,9,11],
+  'Minor':[0,2,3,5,7,8,10],
+  'Dorian':[0,2,3,5,7,9,10],
+  'Phrygian':[0,1,3,5,7,8,10],
+  'Lydian':[0,2,4,6,7,9,11],
+  'Mixolydian':[0,2,4,5,7,9,10],
+  'Aeolian':[0,2,3,5,7,8,10],
+  'Locrian':[0,1,3,5,6,8,10],
+  'Harmonic Minor':[0,2,3,5,7,8,11],
+  'Major Pentatonic':[0,2,4,7,9],
+  'Minor Pentatonic':[0,3,5,7,10]
+};
+
+/* ---------------------------
+   Tone.js audio system (reused synths, throttled updates, master limiter/compressor)
+   - Revert to Tone.js synths as requested
+   - But prevent node-creation bombing: create fixed number of voices and reuse
+   - Throttle frequency updates and reset gains to avoid saturation
+   --------------------------- */
+
+const MAX_VOICES = 2;              // allow up to 2 simultaneous touches
+let voices = [];                   // will hold { synth, filter, effectChain, busy, pointerId }
+let toneStarted = false;
+let lastUpdate = 0;
+const THROTTLE_MS = 40;            // ~25 updates/sec - adjustable (prevents overload)
+
+// Master chain: limiter/compressor -> destination
+Tone.Destination.volume.value = -14; // global attenuation for mobile safety
+const masterCompressor = new Tone.Compressor({ threshold: -12, ratio: 3, attack: 0.01, release: 0.2 }).toDestination();
+const masterLimiter = new Tone.Limiter(-3).connect(masterCompressor);
+
+// Function to create a voice (reused)
+function makeVoice() {
+  // choose synth class by name at creation time but we'll reconfigure on instrument change
+  const synth = new Tone.Synth({
+    oscillator: { type: 'sine' },
+    envelope: { attack: 0.01, decay: 0.08, sustain: 0.5, release: 0.2 },
+    portamento: 0.05
+  });
+  // lowpass filter controlled by X
+  const filter = new Tone.Filter(1000, 'lowpass');
+  // effect node placeholder (dry by default)
+  const effectGain = new Tone.Gain(0); // will be used to route through selected effect -> masterLimiter
+  // connect: synth -> filter -> effectGain -> masterLimiter (so effect sits after filter)
+  synth.connect(filter);
+  filter.connect(effectGain);
+  effectGain.connect(masterLimiter);
+  return { synth, filter, effectGain, busy:false, pointerId:null, effectInstance:null };
 }
-const instrumentSelect=document.getElementById('instrument-select'); let selectedInstrument='Piano';
-instrumentSelect.addEventListener('change',e=>selectedInstrument=e.target.value);
-const effectCheckboxes=document.querySelectorAll('.effect-toggle'); let enabledEffect=null;
-effectCheckboxes.forEach(cb=>cb.addEventListener('change',e=>{
-  if(e.target.checked){effectCheckboxes.forEach(other=>{if(other!==e.target) other.checked=false;}); enabledEffect=e.target.value;} 
-  else enabledEffect=null;
-}));
 
-// --- Audio system (optimized to prevent mobile saturation) ---
-const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-const masterGain = audioContext.createGain();
-masterGain.gain.value = 0.3;
-masterGain.connect(audioContext.destination);
+// Create fixed voices
+function createVoicesIfNeeded(){
+  if(voices.length === 0){
+    for(let i=0;i<MAX_VOICES;i++) voices.push(makeVoice());
+  }
+}
+createVoicesIfNeeded();
 
-const maxVoices = 2;
-const voices = [];
-for(let i=0;i<maxVoices;i++){
-  const osc = audioContext.createOscillator();
-  osc.type='sine';
-  const gain = audioContext.createGain();
-  gain.gain.value=0;
-  osc.connect(gain); gain.connect(masterGain); osc.start();
-  voices.push({osc,gain,active:false});
+// Reconfigure synth type when instrument changes
+function setupVoices(){
+  createVoicesIfNeeded();
+  const mapping = {
+    'Synth': { ctor: Tone.Synth, opts: { oscillator: { type: 'sine' } } },
+    'FMSynth': { ctor: Tone.FMSynth, opts: { harmonicity: 3, modulationIndex: 1 } },
+    'AMSynth': { ctor: Tone.AMSynth, opts: {} },
+    'MembraneSynth': { ctor: Tone.MembraneSynth, opts: {} }
+  };
+  const cfg = mapping[selectedInstrument] || mapping['Synth'];
+  // For each voice, dispose old synth and create new, but keep same filter & effectGain connections
+  voices.forEach(v=>{
+    const oldSynth = v.synth;
+    // create new synth instance with same envelope/portamento where applicable
+    const newSynth = new cfg.ctor(Object.assign({
+      envelope:{ attack:0.01, decay:0.08, sustain:0.5, release:0.2 },
+      portamento: 0.05
+    }, cfg.opts));
+    // reconnect
+    oldSynth.disconnect();
+    newSynth.connect(v.filter);
+    v.synth = newSynth;
+    // ensure effect instance state is handled (we'll reapply effect chain below)
+  });
+  applyEffectSelection();
 }
 
-let lastUpdate=0; const throttle=50;
-function yToFreq(y){
-  const freqs=[261.63,293.66,329.63,392.00,440.00,523.25,587.33,659.25];
-  const idx=Math.floor((1-(y/window.innerHeight))*freqs.length);
-  return freqs[Math.max(0,Math.min(freqs.length-1,idx))];
+// Build single effect instance per voice according to enabledEffect (only one effect active across voices)
+let currentEffectName = 'none';
+function applyEffectSelection(){
+  // destroy existing effectInstances and recreate according to enabledEffect
+  voices.forEach(v=>{
+    // disconnect previous effect chain if exists
+    if(v.effectInstance){
+      try{ v.effectInstance.dispose(); } catch(e) {}
+      v.effectInstance = null;
+    }
+    // effect chain: filter -> effect -> effectGain -> masterLimiter
+    // effectGain is already connected to masterLimiter; we'll insert effect between filter and effectGain if needed
+    v.filter.disconnect();
+    if(enabledEffect && enabledEffect !== 'none'){
+      let eff = null;
+      const wet = 0.12; // safe small wetness
+      switch(enabledEffect){
+        case 'Reverb':
+          eff = new Tone.Reverb({ decay: 1.2, wet }).toDestination();
+          break;
+        case 'Chorus':
+          eff = new Tone.Chorus({ frequency:1.5, delayTime:3.5, depth:0.3, wet }).start();
+          break;
+        case 'Distortion':
+          eff = new Tone.Distortion(0.18);
+          eff.wet = wet;
+          break;
+        case 'Tremolo':
+          eff = new Tone.Tremolo({ frequency:6, depth:0.6, wet }).start();
+          break;
+        case 'Vibrato':
+          eff = new Tone.Vibrato({ frequency:5, depth:0.08, wet }).start();
+          break;
+        case 'Delay':
+          eff = new Tone.FeedbackDelay({ delayTime:'8n', feedback:0.25, wet });
+          break;
+        default:
+          eff = null;
+      }
+      if(eff){
+        // connect filter -> eff -> effectGain
+        v.filter.connect(eff);
+        try{ eff.connect(v.effectGain); } catch(ex){ v.effectGain.connect(masterLimiter); }
+        v.effectInstance = eff;
+      } else {
+        v.filter.connect(v.effectGain);
+      }
+    } else {
+      // no effect selected: connect filter directly to effectGain
+      v.filter.connect(v.effectGain);
+    }
+  });
+  currentEffectName = enabledEffect || 'none';
 }
 
-function triggerVoice(clientY){
+/* ---------------------------
+   Mapping Y -> scale note (2 octaves), X -> filter freq
+   --------------------------- */
+
+function yToNoteName(clientY){
+  // clamp
+  const y = Math.max(0, Math.min(window.innerHeight, clientY));
+  const norm = 1 - (y / window.innerHeight); // 0 at bottom, 1 at top
+  const intervals = SCALES[selectedScale] || SCALES['Major'];
+  const steps = intervals.length * 2; // two octaves
+  const idx = Math.floor(norm * steps);
+  const octave = 3 + Math.floor(idx / intervals.length); // start at C3 base
+  const noteIndex = idx % intervals.length;
+  const semitoneOffset = intervals[noteIndex];
+  // Build note from tonic + octave, then transpose semitones
+  // Tone.Frequency accepts strings like "C3" and .transpose(n)
+  const base = selectedTonic + octave; // e.g. C3
+  // Use Tone.Frequency to transpose
+  try {
+    const note = Tone.Frequency(base).transpose(semitoneOffset).toNote();
+    return note;
+  } catch (e) {
+    // fallback: simple mapping on C scale
+    return selectedTonic + octave;
+  }
+}
+
+function xToFilterFreq(clientX){
+  const x = Math.max(0, Math.min(window.innerWidth, clientX));
+  const ratio = x / window.innerWidth;
+  // Map to 300Hz - 6000Hz (sensible lowpass range)
+  return 300 + ratio * (6000 - 300);
+}
+
+/* ---------------------------
+   Voice allocation and controls
+   --------------------------- */
+// Choose voice for a pointerId: reuse if already assigned, else pick free or steal oldest
+function getVoiceForPointer(pointerId){
+  // find assigned
+  let v = voices.find(v=>v.pointerId === pointerId);
+  if(v) return v;
+  // find free
+  v = voices.find(v=>!v.busy);
+  if(v) return v;
+  // otherwise steal first
+  return voices[0];
+}
+
+function startToneIfNeeded(){
+  if(!toneStarted){
+    Tone.start();
+    toneStarted = true;
+  }
+}
+
+// trigger attack (start or update) for a pointerId at x,y
+function triggerForPointer(pointerId, x, y){
+  startToneIfNeeded();
   const now = performance.now();
-  if(now - lastUpdate < throttle) return;
-  lastUpdate=now;
-  const freq=yToFreq(clientY);
-  const voice=voices.find(v=>!v.active) || voices[0];
-  voice.osc.frequency.setValueAtTime(freq,audioContext.currentTime);
-  voice.gain.gain.setValueAtTime(0.2,audioContext.currentTime);
-  voice.active=true;
+  if(now - lastUpdate < THROTTLE_MS) return; // throttle global updates
+  lastUpdate = now;
+
+  const note = yToNoteName(y);
+  const filterFreq = xToFilterFreq(x);
+
+  const v = getVoiceForPointer(pointerId);
+  v.pointerId = pointerId;
+  v.busy = true;
+
+  // set synth type if necessary (synth class already replaced on instrument change)
+  try{
+    v.synth.triggerAttack(note);
+  }catch(e){
+    // Some synths (e.g. MembraneSynth) use different API; use triggerAttack if present
+    if(typeof v.synth.triggerAttack === 'function') v.synth.triggerAttack(note);
+  }
+  // update portamento / glide by ramping frequency if synth has setNote or frequency (some synths differ)
+  // We adjust the filter frequency smoothly
+  v.filter.frequency.rampTo(filterFreq, 0.06);
+  // update note display
+  document.getElementById('note-display').textContent = note;
 }
 
-function releaseVoices(){
-  voices.forEach(v=>{v.gain.gain.setValueAtTime(0,audioContext.currentTime); v.active=false;});
+// release pointer (stop note)
+function releaseForPointer(pointerId){
+  const v = voices.find(v => v.pointerId === pointerId);
+  if(!v) return;
+  try{
+    if(typeof v.synth.triggerRelease === 'function') v.synth.triggerRelease();
+    if(typeof v.synth.releaseAll === 'function') v.synth.releaseAll();
+  }catch(e){}
+  v.pointerId = null;
+  v.busy = false;
+  // reset filter to safe low freq to avoid resonance
+  v.filter.frequency.rampTo(400, 0.1);
+  // clear note display if no voices active
+  if(!voices.some(vo => vo.busy)) document.getElementById('note-display').textContent = '';
 }
 
-const touchVisual=document.getElementById('touch-visual');
-document.addEventListener('pointerdown',e=>{
+/* ---------------------------
+   Pointer & touch handling
+   - Support multi-touch up to MAX_VOICES
+   - Use passive touch listeners to keep scrolling smooth
+   - Use pointer events for desktop
+   --------------------------- */
+
+const touchVisual = document.getElementById('touch-visual');
+
+// Pointer events (desktop & supported devices)
+window.addEventListener('pointerdown', e => {
+  // don't trigger on header UI
   if(e.target.closest('.header')) return;
-  triggerVoice(e.clientY);
-  touchVisual.style.display='block'; touchVisual.style.left=e.clientX+'px'; touchVisual.style.top=e.clientY+'px';
+  triggerForPointer(e.pointerId, e.clientX, e.clientY);
+  touchVisual.style.display = 'block';
+  touchVisual.style.left = e.clientX + 'px'; touchVisual.style.top = e.clientY + 'px';
 });
-document.addEventListener('pointermove',e=>{
-  if(e.pressure>0 || e.buttons>0){
-    triggerVoice(e.clientY);
-    touchVisual.style.left=e.clientX+'px'; touchVisual.style.top=e.clientY+'px';
+window.addEventListener('pointermove', e => {
+  // update only if this pointer has an assigned voice or is a primary press
+  const assigned = voices.some(v => v.pointerId === e.pointerId);
+  if(e.buttons === 0 && !assigned) return;
+  // ignore moves that are not presses unless assigned
+  if(assigned) {
+    triggerForPointer(e.pointerId, e.clientX, e.clientY);
+    touchVisual.style.left = e.clientX + 'px'; touchVisual.style.top = e.clientY + 'px';
   }
 });
-document.addEventListener('pointerup',e=>{releaseVoices(); touchVisual.style.display='none'; document.getElementById('note-display').textContent='';});
+window.addEventListener('pointerup', e => { releaseForPointer(e.pointerId); touchVisual.style.display='none'; });
+window.addEventListener('pointercancel', e => { releaseForPointer(e.pointerId); touchVisual.style.display='none'; });
+
+// Touch events fallback (passive to allow scrolling)
+window.addEventListener('touchstart', async (ev) => {
+  // start Tone context on first user gesture
+  startToneIfNeeded();
+  for(const t of ev.changedTouches){
+    if(t.target.closest('.header')) continue;
+    // assign touch to a voice
+    triggerForPointer(t.identifier, t.clientX, t.clientY);
+    touchVisual.style.display = 'block';
+    touchVisual.style.left = t.clientX + 'px'; touchVisual.style.top = t.clientY + 'px';
+  }
+}, { passive: true });
+
+window.addEventListener('touchmove', (ev) => {
+  for(const t of ev.changedTouches){
+    const assigned = voices.some(v=>v.pointerId === t.identifier);
+    if(assigned){
+      triggerForPointer(t.identifier, t.clientX, t.clientY);
+      touchVisual.style.left = t.clientX + 'px'; touchVisual.style.top = t.clientY + 'px';
+    }
+  }
+}, { passive: true });
+
+window.addEventListener('touchend', (ev) => {
+  for(const t of ev.changedTouches){
+    releaseForPointer(t.identifier);
+    touchVisual.style.display = 'none';
+  }
+}, { passive: true });
+
+window.addEventListener('touchcancel', (ev) => {
+  for(const t of ev.changedTouches){
+    releaseForPointer(t.identifier);
+    touchVisual.style.display = 'none';
+  }
+}, { passive: true });
+
+// Stop everything on blur (cleanup)
+window.addEventListener('blur', () => { voices.forEach(v=>{ releaseForPointer(v.pointerId); v.pointerId=null; v.busy=false; }); touchVisual.style.display='none'; document.getElementById('note-display').textContent=''; });
+
+/* ---------------------------
+   Initialization & effect wiring
+   --------------------------- */
+function initAudio() {
+  // create voices if not present and apply initial effect selection
+  createVoicesIfNeeded();
+  setupVoices();
+  applyEffectSelection();
+}
+
+// Ensure Tone is warmed up once user interacts with UI (safe)
+document.addEventListener('click', function warm() { startToneIfNeeded(); document.removeEventListener('click', warm); }, { once: true });
+
+/* on load create voices & default config */
+initAudio();
+
 </script>
 </body>
 </html>
