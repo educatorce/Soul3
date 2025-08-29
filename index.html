@@ -131,82 +131,44 @@ function yToNote(y){
 }
 function xToFilter(x){return Math.max(300,Math.min(5000,(x/window.innerWidth)*5000));}
 
-// --- Voice controls ---
+// --- Voice controls (mobile optimized) ---
+Tone.Destination.volume.value = -12;
+const synthOptions = {oscillator:{type:'sine'}, envelope:{attack:0.01, decay:0.1, sustain:0.5, release:0.2}};
+
 async function startVoice(id,x,y){
   await Tone.start();
   if(Object.keys(voices).length>=maxVoices) return;
   const note=yToNote(y);
-  const filter=new Tone.Filter(xToFilter(x),'lowpass').toDestination();
+  const filter=new Tone.Filter(xToFilter(x),'lowpass',-12).toDestination();
   const synthClass={Synth:Tone.Synth,AMSynth:Tone.AMSynth,FMSynth:Tone.FMSynth,MembraneSynth:Tone.MembraneSynth}[selectedInstrument]||Tone.Synth;
-  const synth=new synthClass({oscillator:{type:'sine'}}).connect(filter);
-  if(enabledEffects.Reverb) synth.connect(new Tone.Reverb().toDestination());
-  else if(enabledEffects.Chorus) synth.connect(new Tone.Chorus().toDestination());
-  else if(enabledEffects.Distortion) synth.connect(new Tone.Distortion().toDestination());
-  else if(enabledEffects.Tremolo) synth.connect(new Tone.Tremolo().toDestination().start());
-  else if(enabledEffects.Vibrato) synth.connect(new Tone.Vibrato().toDestination().start());
-  else if(enabledEffects.Delay) synth.connect(new Tone.FeedbackDelay('8n').toDestination());
+  const synth=new synthClass(synthOptions).connect(filter);
+  if(enabledEffects.Reverb) synth.connect(new Tone.Reverb({wet:0.2, decay:1.5}).toDestination());
+  else if(enabledEffects.Chorus) synth.connect(new Tone.Chorus({wet:0.2, frequency:1.5}).toDestination());
+  else if(enabledEffects.Distortion) synth.connect(new Tone.Distortion(0.3).toDestination());
+  else if(enabledEffects.Tremolo) synth.connect(new Tone.Tremolo({wet:0.2, frequency:4}).toDestination().start());
+  else if(enabledEffects.Vibrato) synth.connect(new Tone.Vibrato({wet:0.2, frequency:5}).toDestination().start());
+  else if(enabledEffects.Delay) synth.connect(new Tone.FeedbackDelay({delayTime:0.2, feedback:0.3, wet:0.2}).toDestination());
   synth.triggerAttack(note);
   voices[id]={synth,filter};
   noteDisplay.textContent=note;
 }
-function updateVoice(id,x,y){
-  if(!voices[id]) return;
-  const note=yToNote(y);
-  const freq=Tone.Frequency(note).toFrequency();
-  voices[id].synth.frequency.rampTo(freq,0.05);
-  voices[id].filter.frequency.rampTo(xToFilter(x),0.05);
-  noteDisplay.textContent=note;
-}
-function stopVoice(id){
-  if(!voices[id]) return;
-  voices[id].synth.triggerRelease();
-  delete voices[id];
-  noteDisplay.textContent='';
-}
+function moveVoice(id,x,y){if(voices[id]){const note=yToNote(y); voices[id].synth.setNote(note); voices[id].filter.frequency.value=xToFilter(x); noteDisplay.textContent=note;}}
+function stopVoice(id){if(voices[id]){voices[id].synth.triggerRelease(); delete voices[id]; noteDisplay.textContent='';}}
+
+// --- Pointer events ---
+let currentPointer=null;
+function animatePointer(){if(currentPointer){moveVoice('main',currentPointer.clientX,currentPointer.clientY); requestAnimationFrame(animatePointer);}}
+document.addEventListener('pointerdown', e=>{ if(e.target.closest('.header')) return; currentPointer=e; startVoice('main',e.clientX,e.clientY); showTouch(e.clientX,e.clientY); requestAnimationFrame(animatePointer); },{passive:true});
+document.addEventListener('pointermove', e=>{ if(currentPointer && e.pointerId===currentPointer.pointerId) currentPointer=e; },{passive:true});
+document.addEventListener('pointerup', e=>{ if(currentPointer && e.pointerId===currentPointer.pointerId){ stopVoice('main'); hideTouch(); currentPointer=null;} },{passive:true});
+document.addEventListener('pointercancel', e=>{ if(currentPointer && e.pointerId===currentPointer.pointerId){ stopVoice('main'); hideTouch(); currentPointer=null;} },{passive:true});
 
 // --- Posts ---
-function generatePost(){const names=['Emma','Liam','Olivia','Noah','Ava']; const texts=['Having a great day! 😊','Check out this amazing view! 🌅','Coffee time ☕','Working on something exciting! 🚀','Weekend vibes 🎉']; let media=null; if(typeof mediaList!=='undefined' && mediaList.length>0 && Math.random()>0.5) media=mediaList[Math.floor(Math.random()*mediaList.length)]; return {id:postId++,name:names[Math.floor(Math.random()*names.length)],text:texts[Math.floor(Math.random()*texts.length)],time:'2 hours ago',media};}
-function renderMedia(filePath){const ext=filePath.split('.').pop().toLowerCase(); if(['jpg','jpeg','png'].includes(ext)) return `<div style="margin-top:10px;"><img src="${filePath}" alt="Post media" style="width:100%;border-radius:8px;"></div>`; else if(ext==='mp4') return `<div style="margin-top:10px;"><video src="${filePath}" controls style="width:100%;border-radius:8px;"></video></div>`; else return '';}
-function createPost(postData){const postDiv=document.createElement('div'); postDiv.className='post'; postDiv.dataset.postId=postData.id; postDiv.innerHTML=`<div class="post-header"><div class="avatar">${postData.name[0]}</div><div><div><strong>${postData.name}</strong></div><div style="font-size:12px;color:#999;">${postData.time}</div></div></div><div>${postData.text}</div>${postData.media?renderMedia(postData.media):''}<div class="post-actions"><button class="action-btn like-btn" role="button" tabindex="0" aria-pressed="false">👍 Like</button><button class="action-btn" role="button" tabindex="0">💬 Comment</button><button class="action-btn" role="button" tabindex="0">📤 Share</button></div>`; const likeBtn=postDiv.querySelector('.like-btn'); likeBtn.addEventListener('click',()=>{ likeBtn.classList.toggle('liked'); const isLiked=likeBtn.classList.contains('liked'); likeBtn.setAttribute('aria-pressed',isLiked); likeBtn.textContent=isLiked?'❤️ Liked':'👍 Like'; }); return postDiv;}
-function loadMore(){if(isLoading)return; isLoading=true; const container=document.getElementById('posts-container'); const skeletons=[]; for(let i=0;i<5;i++){const skeleton=document.createElement('div'); skeleton.className='skeleton-post'; container.appendChild(skeleton); skeletons.push(skeleton);} setTimeout(()=>{skeletons.forEach(skeleton=>{const postData=generatePost(); const postElement=createPost(postData); skeleton.replaceWith(postElement);}); isLoading=false;},600);}
-window.addEventListener('DOMContentLoaded',()=>{const sentinel=document.getElementById('sentinel'); const observer=new IntersectionObserver(entries=>{if(entries[0].isIntersecting) loadMore();},{rootMargin:'200px 0px'}); observer.observe(sentinel); loadMore(); setTimeout(()=>loadMore(),100);});
-
-// --- Mobile theremin with scroll ---
-let currentTouch=null;
-function animateTouch(){
-  if(currentTouch){
-    updateVoice('main', currentTouch.clientX, currentTouch.clientY);
-    requestAnimationFrame(animateTouch);
-  }
-}
-document.addEventListener('touchstart', async e=>{
-  const touch=e.changedTouches[0];
-  if(touch.target.closest('.header,.post img,.post video')) return;
-  await Tone.start();
-  currentTouch=touch;
-  startVoice('main', touch.clientX, touch.clientY);
-  showTouch(touch.clientX,touch.clientY);
-  requestAnimationFrame(animateTouch);
-},{passive:true});
-document.addEventListener('touchmove', e=>{
-  const touch=Array.from(e.changedTouches).find(t=>t.identifier===currentTouch?.identifier);
-  if(!touch) return;
-  currentTouch=touch;
-},{passive:true});
-document.addEventListener('touchend', e=>{
-  const touch=Array.from(e.changedTouches).find(t=>t.identifier===currentTouch?.identifier);
-  if(!touch) return;
-  stopVoice('main');
-  hideTouch();
-  currentTouch=null;
-},{passive:true});
-document.addEventListener('touchcancel', e=>{
-  const touch=Array.from(e.changedTouches).find(t=>t.identifier===currentTouch?.identifier);
-  if(!touch) return;
-  stopVoice('main');
-  hideTouch();
-  currentTouch=null;
-},{passive:true});
+function generatePost(){const names=['Emma','Liam','Olivia','Noah','Ava'];const texts=['Having a great day! 😊','Check out this amazing view! 🌅','Coffee time ☕','Working on something exciting! 🚀','Weekend vibes 🎉'];let media=null;if(typeof mediaList!=='undefined'&&mediaList.length>0&&Math.random()>0.5) media=mediaList[Math.floor(Math.random()*mediaList.length)];return {id:postId++, name:names[Math.floor(Math.random()*names.length)], text:texts[Math.floor(Math.random()*texts.length)], time:'2 hours ago', media};}
+function renderMedia(filePath){const ext=filePath.split('.').pop().toLowerCase(); if(['jpg','jpeg','png'].includes(ext)) return `<div style="margin-top:10px;"><img src="${filePath}" alt="Post media" style="width:100%; border-radius:8px;"></div>`; if(ext==='mp4') return `<div style="margin-top:10px;"><video src="${filePath}" controls style="width:100%; border-radius:8px;"></video></div>`; return '';}
+function createPost(postData){const postDiv=document.createElement('div'); postDiv.className='post'; postDiv.dataset.postId=postData.id; postDiv.innerHTML=`<div class="post-header"><div class="avatar">${postData.name[0]}</div><div><div><strong>${postData.name}</strong></div><div style="font-size:12px;color:#999;">${postData.time}</div></div></div><div>${postData.text}</div>${postData.media?renderMedia(postData.media):''}<div class="post-actions"><button class="action-btn like-btn" role="button" tabindex="0" aria-pressed="false">👍 Like</button><button class="action-btn" role="button" tabindex="0">💬 Comment</button><button class="action-btn" role="button" tabindex="0">📤 Share</button></div>`; const likeBtn=postDiv.querySelector('.like-btn'); likeBtn.addEventListener('click',function(){this.classList.toggle('liked'); const isLiked=this.classList.contains('liked'); this.setAttribute('aria-pressed',isLiked); this.textContent=isLiked?'❤️ Liked':'👍 Like';}); return postDiv;}
+function loadMore(){if(isLoading) return; isLoading=true; const container=document.getElementById('posts-container'); const feed=document.querySelector('.feed'); feed.setAttribute('aria-busy','true'); const skeletons=[]; for(let i=0;i<5;i++){const s=document.createElement('div'); s.className='skeleton-post'; container.appendChild(s); skeletons.push(s);} setTimeout(()=>{skeletons.forEach(s=>{const postData=generatePost(); const postElement=createPost(postData); s.replaceWith(postElement);}); feed.setAttribute('aria-busy','false'); isLoading=false;},800);}
+window.addEventListener('DOMContentLoaded',()=>{const sentinel=document.getElementById('sentinel'); const observer=new IntersectionObserver(entries=>{if(entries[0].isIntersecting) loadMore();},{ rootMargin:'200px 0px'}); observer.observe(sentinel); loadMore(); setTimeout(()=>loadMore(),100);});
 </script>
 </body>
 </html>
