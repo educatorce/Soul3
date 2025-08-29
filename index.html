@@ -193,10 +193,10 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.39/Tone.js"></script>
   <script src="media-list.js"></script>
+
   <script>
     let postId = 0;
     let isLoading = false;
-
     const feed = document.getElementById("posts-container");
 
     // ------------------- Tone.js -------------------
@@ -261,121 +261,106 @@
 
     // Input touch/mouse
     let active = false;
-    function startSound(y,x){ const note=getNoteFromY(y); synth.triggerAttack(note); updateFilter(x); }
-    function updateSound(y,x){ if(!active) return; const note=getNoteFromY(y); synth.setNote(note); updateFilter(x); }
+    function startSound(y,x){ const note = getNoteFromY(y); synth.triggerAttack(note); updateFilter(x); }
+    function updateSound(y,x){ if(!active) return; const note = getNoteFromY(y); synth.setNote(note); updateFilter(x); }
     function stopSound(){ synth.triggerRelease(); }
     function updateFilter(x){ const freq = Tone.Frequency(200 + (x/window.innerWidth)*8000); lowPass.frequency.setValueAtTime(freq,Tone.now()); }
-
-    window.addEventListener("mousedown", e=>{ if(e.target.closest("header")) return; active=true; Tone.start(); startSound(e.clientY,e.clientX); });
-    window.addEventListener("mousemove", e=>{ if(active) updateSound(e.clientY,e.clientX); });
-    window.addEventListener("mouseup", ()=>{ active=false; stopSound(); });
-    window.addEventListener("touchstart", e=>{ if(e.target.closest("header")) return; active=true; Tone.start(); const t=e.touches[0]; startSound(t.clientY,t.clientX); });
-    window.addEventListener("touchmove", e=>{ if(active){ const t=e.touches[0]; updateSound(t.clientY,t.clientX); }});
+    window.addEventListener("touchstart", e => { if(e.target.closest("header")) return; active=true; Tone.start(); const t=e.touches[0]; startSound(t.clientY,t.clientX); });
+    window.addEventListener("touchmove", e => { if(active){ const t=e.touches[0]; updateSound(t.clientY,t.clientX); } });
     window.addEventListener("touchend", ()=>{ active=false; stopSound(); });
+    window.addEventListener("mousedown", e => { if(e.target.closest("header")) return; active=true; Tone.start(); startSound(e.clientY,e.clientX); });
+    window.addEventListener("mousemove", e => { if(active){ updateSound(e.clientY,e.clientX); } });
+    window.addEventListener("mouseup", ()=>{ active=false; stopSound(); });
 
-    // ------------------- Posts -------------------
+    // ------------------- Post generation -------------------
     function renderMedia(filePath){
-      const ext=filePath.split('.').pop().toLowerCase();
-      if(["jpg","jpeg","png"].includes(ext)) return `<div style="margin-top:10px;"><img src="${filePath}" style="width:100%; border-radius:8px;"></div>`;
-      if(ext==="mp4") return `<div style="margin-top:10px;"><video src="${filePath}" controls style="width:100%; border-radius:8px;"></video></div>`;
-      return "";
+      const ext = filePath.split('.').pop().toLowerCase();
+      if(!filePath) return "";
+      if(["jpg","jpeg","png"].includes(ext)){
+        return `<div style="margin-top:10px;"><img src="${filePath}" alt="Post media" style="width:100%; border-radius:8px;"></div>`;
+      }else if(ext==="mp4"){
+        return `<div style="margin-top:10px;"><video src="${filePath}" controls style="width:100%; border-radius:8px;"></video></div>`;
+      }else return "";
     }
 
-    function checkMediaExists(url){
-      return new Promise(resolve=>{
-        const img=new Image();
-        img.onload=()=>resolve(true);
-        img.onerror=()=>resolve(false);
-        img.src=url;
-      });
-    }
-
-    async function generateValidPost(){
-      let media=null;
-      if(typeof mediaList!=="undefined" && mediaList.length>0){
-        let attempts=0;
-        do{
-          media=mediaList[Math.floor(Math.random()*mediaList.length)];
-          attempts++;
-          if(!media) break;
-          const ext=media.split('.').pop().toLowerCase();
-          let exists=false;
-          if(["jpg","jpeg","png"].includes(ext)) exists=await checkMediaExists(media);
-          else if(ext==="mp4") exists=true; // simplificación para mp4
-          if(exists) break;
-          media=null;
-        } while(attempts<mediaList.length);
+    function generatePost(){
+      if(typeof mediaList==="undefined" || mediaList.length===0) return null;
+      let postData=null;
+      let attempts=0;
+      while(!postData && attempts<5){
+        const media = mediaList[Math.floor(Math.random()*mediaList.length)];
+        // Check if file exists
+        const xhr = new XMLHttpRequest();
+        xhr.open('HEAD', media, false);
+        try{
+          xhr.send();
+          if(xhr.status>=200 && xhr.status<400){
+            postData = { id: postId++, name:"User", text:"Post", media };
+          }
+        }catch(e){ }
+        attempts++;
       }
-      const names=['Emma','Liam','Olivia','Noah','Ava'];
-      const texts=['Having a great day! 😊','Check out this amazing view! 🌅','Coffee time ☕','Working on something exciting! 🚀','Weekend vibes 🎉'];
-      return {
-        id: postId++,
-        name:names[Math.floor(Math.random()*names.length)],
-        text:texts[Math.floor(Math.random()*texts.length)],
-        time:'2 hours ago',
-        media:media
-      };
+      return postData;
     }
 
-    function createPost(postData){
-      const postDiv=document.createElement('div');
-      postDiv.className='post';
-      postDiv.dataset.postId=postData.id;
-      postDiv.innerHTML=`
+    function createPostElement(postData){
+      const div = document.createElement('div');
+      div.className='post';
+      div.dataset.postId=postData.id;
+      div.innerHTML=`
         <div class="post-header">
           <div class="avatar">${postData.name[0]}</div>
           <div>
             <div><strong>${postData.name}</strong></div>
-            <div style="font-size:12px;color:#999;">${postData.time}</div>
+            <div style="font-size: 12px; color: #999;">2 hours ago</div>
           </div>
         </div>
         <div>${postData.text}</div>
-        ${postData.media ? renderMedia(postData.media) : ""}
+        ${renderMedia(postData.media)}
         <div class="actions">
-          <button class="like-btn">❤️</button>
+          <button>❤️</button>
           <button>💬</button>
           <button>🔗</button>
         </div>
       `;
-      postDiv.querySelectorAll('button').forEach(btn=>{
-        btn.addEventListener('click',()=>{
-          Tone.start();
-          const note=['C4','D4','E4','G4','A4'][Math.floor(Math.random()*5)];
-          synth.triggerAttackRelease(note,'8n');
-        });
-      });
-      return postDiv;
+      return div;
     }
 
-    async function loadMore(){
+    function loadMorePosts(){
       if(isLoading) return;
       isLoading=true;
       const skeletons=[];
-      for(let i=0;i<3;i++){
+      for(let i=0;i<5;i++){
         const sk=document.createElement('div');
         sk.className='skeleton-post';
         feed.appendChild(sk);
         skeletons.push(sk);
       }
-      setTimeout(async()=>{
-        for(const sk of skeletons){
-          const postData=await generateValidPost();
-          const postEl=createPost(postData);
-          sk.replaceWith(postEl);
-        }
+      setTimeout(()=>{
+        skeletons.forEach(sk=>{
+          const postData = generatePost();
+          if(postData){
+            const postEl = createPostElement(postData);
+            sk.replaceWith(postEl);
+          }else sk.remove();
+        });
         isLoading=false;
-      },500);
+      }, 800);
     }
 
-    // ------------------- Infinite scroll -------------------
-    window.addEventListener('DOMContentLoaded',()=>{
-      const sentinel=document.getElementById('sentinel');
-      const observer=new IntersectionObserver(entries=>{
-        if(entries[0].isIntersecting) loadMore();
-      },{rootMargin:'200px 0px'});
-      observer.observe(sentinel);
-      loadMore();
-      setTimeout(()=>loadMore(),100);
+    const sentinel = document.getElementById('sentinel');
+    const observer = new IntersectionObserver(entries=>{
+      if(entries[0].isIntersecting) loadMorePosts();
+    }, { rootMargin: '200px 0px' });
+    observer.observe(sentinel);
+
+    window.addEventListener('DOMContentLoaded', ()=>{ loadMorePosts(); setTimeout(()=>loadMorePosts(),100); });
+
+    // Menu toggle
+    const menuIcon = document.querySelector(".menu-icon");
+    const dropdown = document.querySelector(".dropdown");
+    menuIcon.addEventListener("click", () => {
+      dropdown.style.display = dropdown.style.display === "block" ? "none" : "block";
     });
   </script>
 </body>
