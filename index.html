@@ -6,31 +6,141 @@
 <title>Melofeed</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Billabong&display=swap');
-body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,Cantarell,'Open Sans','Helvetica Neue',sans-serif; background:#121212; color:#eee; margin:0; }
-header { display:flex; justify-content:space-between; align-items:center; padding:10px 20px; background:#1e1e1e; border-bottom:1px solid #333; position:sticky; top:0; z-index:1000; }
-header h1 { font-family:'Billabong',cursive; font-size:28px; margin:0; color:#fff; }
-.menu-container { position:relative; display:flex; align-items:center; gap:10px; }
-.menu-icon { cursor:pointer; font-size:22px; color:#fff; }
-.stop-button { cursor:pointer; font-size:22px; color:#ff4b4b; background:none; border:none; }
-.dropdown { display:none; position:absolute; top:40px; right:0; background:#1e1e1e; border:1px solid #333; border-radius:6px; padding:10px; z-index:1001; flex-direction:column; gap:5px; }
-.feed { max-width:600px; margin:20px auto; padding:0 10px; }
-.post { background:#1e1e1e; border:1px solid #333; border-radius:8px; padding:10px; margin-bottom:15px; }
-.post-header { display:flex; align-items:center; margin-bottom:10px; }
-.avatar { width:40px; height:40px; border-radius:50%; background:#3a3a3a; color:#fff; display:flex; align-items:center; justify-content:center; margin-right:10px; }
-.post-actions { display:flex; justify-content:space-around; margin-top:10px; }
-.post-actions button { background:none; border:none; cursor:pointer; color:#eee; font-size:16px; }
-.post-actions button:hover { color:#ff4081; }
-.post * { user-select:none; }
-.post img, video { max-width:100%; border-radius:8px; cursor:pointer; }
-.skeleton-post { background:#1e1e1e; border-radius:8px; padding:15px; margin-bottom:15px; height:150px; animation:pulse 1.5s infinite; border:1px solid #333; }
-@keyframes pulse { 0%{opacity:0.6;}50%{opacity:1;}100%{opacity:0.6;} }
+
+body {
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,Cantarell,'Open Sans','Helvetica Neue',sans-serif;
+    background:#121212;
+    color:#eee;
+    margin:0;
+}
+
+header {
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:10px 20px;
+    background:#1e1e1e;
+    border-bottom:1px solid #333;
+    position:sticky;
+    top:0;
+    z-index:1000;
+}
+
+header h1 {
+    font-family:'Billabong',cursive;
+    font-size:28px;
+    margin:0;
+    color:#fff;
+}
+
+.menu-container {
+    position:relative;
+    display:flex;
+    align-items:center;
+    gap:10px;
+}
+
+.menu-icon, .stop-button {
+    cursor:pointer;
+    font-size:22px;
+    color:#fff;
+}
+
+.dropdown {
+    display:none;
+    position:absolute;
+    top:40px;
+    right:0;
+    background:#1e1e1e;
+    border:1px solid #333;
+    border-radius:6px;
+    padding:10px;
+    z-index:1001;
+    display:flex;
+    flex-direction:column;
+    gap:5px;
+}
+
+.feed {
+    max-width:600px;
+    margin:20px auto;
+    padding:0 10px;
+}
+
+.post {
+    background:#1e1e1e;
+    border:1px solid #333;
+    border-radius:8px;
+    padding:10px;
+    margin-bottom:15px;
+}
+
+.post-header {
+    display:flex;
+    align-items:center;
+    margin-bottom:10px;
+}
+
+.avatar {
+    width:40px;
+    height:40px;
+    border-radius:50%;
+    background:#3a3a3a;
+    color:#fff;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    margin-right:10px;
+}
+
+.post-actions {
+    display:flex;
+    justify-content:space-around;
+    margin-top:10px;
+}
+
+.post-actions button {
+    background:none;
+    border:none;
+    cursor:pointer;
+    color:#eee;
+    font-size:16px;
+}
+
+.post-actions button:hover {
+    color:#ff4081;
+}
+
+.post * {
+    user-select:none;
+}
+
+.post img, video {
+    max-width:100%;
+    height:auto;
+    border-radius:8px;
+    cursor:pointer;
+}
+
+.skeleton-post {
+    background:#1e1e1e;
+    border-radius:8px;
+    padding:15px;
+    margin-bottom:15px;
+    height:150px;
+    animation:pulse 1.5s infinite;
+    border:1px solid #333;
+}
+
+@keyframes pulse {0%{opacity:0.6;}50%{opacity:1;}100%{opacity:0.6;}}
 </style>
 </head>
 <body>
+
 <header>
 <h1>Melofeed</h1>
 <div class="menu-container">
-    <button class="stop-button">⏹</button>
+    <span class="stop-button">⏹️</span>
     <span class="menu-icon">☰</span>
     <div class="dropdown">
         <select id="instrumentSelect">
@@ -90,48 +200,68 @@ header h1 { font-family:'Billabong',cursive; font-size:28px; margin:0; color:#ff
 <script src="media-list.js"></script>
 <script>
 const feed = document.getElementById("feed");
-let postId=0, isLoading=false;
-let synth, effectNode;
-let activeTouches={}, arpeggioInterval=null, droneOsc=null;
+let postId=0,isLoading=false;
+let synth,effectNode;
+let activeTouches={},arpeggioInterval=null, droneOsc=null;
 
-// Scales & tonalities
-const scales={ major:[0,2,4,5,7,9,11], minor:[0,2,3,5,7,8,10], dorian:[0,2,3,5,7,9,10],
-    phrygian:[0,1,3,5,7,8,10], lydian:[0,2,4,6,7,9,11], mixolydian:[0,2,4,5,7,9,10],
-    locrian:[0,1,3,5,6,8,10], harmonicMinor:[0,2,3,5,7,8,11], pentatonicMajor:[0,2,4,7,9], pentatonicMinor:[0,3,5,7,10]};
+// Scales
+const scales={
+major:[0,2,4,5,7,9,11],
+minor:[0,2,3,5,7,8,10],
+dorian:[0,2,3,5,7,9,10],
+phrygian:[0,1,3,5,7,8,10],
+lydian:[0,2,4,6,7,9,11],
+mixolydian:[0,2,4,5,7,9,10],
+locrian:[0,1,3,5,6,8,10],
+harmonicMinor:[0,2,3,5,7,8,11],
+pentatonicMajor:[0,2,4,7,9],
+pentatonicMinor:[0,3,5,7,10]
+};
 const tonalities=["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
-let currentScale="major", currentTonality="C";
+let currentScale="major",currentTonality="C";
 
 // Create synth
-function createSynth(type="Synth"){if(synth) synth.dispose(); synth=new Tone[type]().toDestination();}
+function createSynth(type="Synth"){
+    if(synth) synth.dispose();
+    synth=new Tone[type]().toDestination();
+}
 function applyEffect(type){
     if(effectNode){effectNode.dispose(); synth.connect(Tone.Destination);}
     if(type!=="none"){
         switch(type){
-            case"reverb": effectNode=new Tone.Reverb().toDestination(); break;
-            case"chorus": effectNode=new Tone.Chorus().toDestination(); break;
-            case"distortion": effectNode=new Tone.Distortion(0.4).toDestination(); break;
-            case"tremolo": effectNode=new Tone.Tremolo().start().toDestination(); break;
-            case"vibrato": effectNode=new Tone.Vibrato().toDestination(); break;
-            case"delay": effectNode=new Tone.FeedbackDelay("8n",0.5).toDestination(); break;
+            case"reverb":effectNode=new Tone.Reverb().toDestination();break;
+            case"chorus":effectNode=new Tone.Chorus().toDestination();break;
+            case"distortion":effectNode=new Tone.Distortion(0.4).toDestination();break;
+            case"tremolo":effectNode=new Tone.Tremolo().start().toDestination();break;
+            case"vibrato":effectNode=new Tone.Vibrato().toDestination();break;
+            case"delay":effectNode=new Tone.FeedbackDelay("8n",0.5).toDestination();break;
         }
         synth.connect(effectNode);
     }
 }
 createSynth("Synth");
 
-// Menu listeners (no sound)
-document.getElementById("instrumentSelect").addEventListener("change", e=>{
+// Menu event listeners
+document.getElementById("instrumentSelect").addEventListener("change",e=>{
     createSynth(e.target.value);
     applyEffect(document.getElementById("effectSelect").value);
 });
-document.getElementById("effectSelect").addEventListener("change", e=>{
-    applyEffect(e.target.value);
-});
-document.getElementById("scaleSelect").addEventListener("change", e=>currentScale=e.target.value);
-document.getElementById("tonalitySelect").addEventListener("change", e=>currentTonality=e.target.value);
+document.getElementById("effectSelect").addEventListener("change",e=>applyEffect(e.target.value));
+document.getElementById("scaleSelect").addEventListener("change",e=>currentScale=e.target.value);
+document.getElementById("tonalitySelect").addEventListener("change",e=>currentTonality=e.target.value);
 
-// Get note from Y
-function getNoteFromY(y){const h=window.innerHeight; const pos=1-(y/h); const scale=scales[currentScale]; const tIndex=tonalities.indexOf(currentTonality); const totalNotes=scale.length*2; const idx=Math.floor(pos*totalNotes); const octave=3+Math.floor(idx/scale.length); const semitone=(scale[idx%scale.length]+tIndex)%12; return tonalities[semitone]+octave;}
+// Note from Y
+function getNoteFromY(y){
+    const h=window.innerHeight;
+    const pos=1-(y/h);
+    const scale=scales[currentScale];
+    const tIndex=tonalities.indexOf(currentTonality);
+    const totalNotes=scale.length*2;
+    const idx=Math.floor(pos*totalNotes);
+    const octave=3+Math.floor(idx/scale.length);
+    const semitone=(scale[idx%scale.length]+tIndex)%12;
+    return tonalities[semitone]+octave;
+}
 
 // Media rendering
 function renderMedia(path){
@@ -145,94 +275,123 @@ function renderMedia(path){
 function generatePost(){
     if(typeof mediaList==="undefined" || mediaList.length===0) return null;
     let media=null, attempts=0;
-    while(attempts<5){const candidate=mediaList[Math.floor(Math.random()*mediaList.length)]; if(candidate){media=candidate; break;} attempts++;}
+    while(attempts<5){
+        const candidate=mediaList[Math.floor(Math.random()*mediaList.length)];
+        if(candidate){media=candidate; break;}
+        attempts++;
+    }
     if(!media) return null;
     const names=['Emma','Liam','Olivia','Noah','Ava'];
     const texts=['Having a great day!','Check this view!','Coffee time','Working on something','Weekend vibes'];
-    return {id:postId++, name:names[Math.floor(Math.random()*names.length)],
-        text:texts[Math.floor(Math.random()*texts.length)], time:'2 hours ago', media:media};
+    return {
+        id:postId++,
+        name:names[Math.floor(Math.random()*names.length)],
+        text:texts[Math.floor(Math.random()*texts.length)],
+        time:'2 hours ago',
+        media:media
+    };
 }
-
 function createPost(data){
     if(!data) return null;
     const post=document.createElement("div");
     post.className="post";
-    post.innerHTML=`<div class="post-header">
+    post.innerHTML=`
+    <div class="post-header">
         <div class="avatar">${data.name[0]}</div>
-        <div><div><strong>${data.name}</strong></div>
-        <div style="font-size:12px;color:#999;">${data.time}</div></div></div>
-        <div>${data.text}</div>
-        ${data.media?renderMedia(data.media):""}
-        <div class="post-actions">
-        <button>👍 Like</button><button>💬 Comment</button><button>📤 Share</button>
-        </div>`;
+        <div>
+            <div><strong>${data.name}</strong></div>
+            <div style="font-size:12px;color:#999;">${data.time}</div>
+        </div>
+    </div>
+    <div>${data.text}</div>
+    ${data.media?renderMedia(data.media):""}
+    <div class="post-actions">
+        <button>👍 Like</button>
+        <button>💬 Comment</button>
+        <button>📤 Share</button>
+    </div>`;
     const video=post.querySelector("video");
-    if(video){video.addEventListener("click",()=>{video.muted=false; video.play();});}
+    if(video){
+        video.addEventListener("click",()=>{video.muted=false; video.play();});
+    }
     feed.appendChild(post);
     return post;
 }
 
 // Infinite scroll
-function loadMore(){if(isLoading) return; isLoading=true; for(let i=0;i<5;i++){const data=generatePost(); if(data) createPost(data);} isLoading=false;}
-window.addEventListener("DOMContentLoaded", ()=>{
+function loadMore(){
+    if(isLoading) return;
+    isLoading=true;
+    for(let i=0;i<5;i++){
+        const data=generatePost();
+        if(data) createPost(data);
+    }
+    isLoading=false;
+}
+window.addEventListener("DOMContentLoaded",()=>{
     loadMore();
-    const sentinel=document.createElement("div"); feed.appendChild(sentinel);
-    const obs=new IntersectionObserver(entries=>{if(entries[0].isIntersecting) loadMore();},{rootMargin:"200px 0px"});
+    const sentinel=document.createElement("div");
+    feed.appendChild(sentinel);
+    const obs=new IntersectionObserver(entries=>{
+        if(entries[0].isIntersecting) loadMore();
+    },{rootMargin:"200px 0px"});
     obs.observe(sentinel);
 });
 
-// Touch & arpeggiator
+// Touch input & arpeggiator & drone
 function startTouch(y,x,id){
-    if(id==="menu" || id==="stop") return; // prevent sounds in header
+    if(id === "header") return; // no sound in header
     Tone.start();
-    activeTouches[id]={y:y,x:x,osc:null};
-    const touchCount=Object.keys(activeTouches).length;
-
-    if(touchCount===2){ // arpeggiator
+    activeTouches[id]={y:x,x:x,osc:null};
+    if(Object.keys(activeTouches).length===3 && !droneOsc){
+        // Drone with most grave note
+        const note=getNoteFromY(Math.max(...Object.values(activeTouches).map(t=>t.y)));
+        droneOsc=new Tone.Synth().toDestination();
+        droneOsc.triggerAttack(note);
+        return;
+    }
+    if(Object.keys(activeTouches).length===2){
+        // Arpeggiator
         if(arpeggioInterval){clearInterval(arpeggioInterval); arpeggioInterval=null;}
-        stopDrone();
         const firstY=Math.min(...Object.values(activeTouches).map(t=>t.y));
         startArpeggio(firstY);
         return;
-    } else if(touchCount===3){ // drone
-        if(!droneOsc){
-            const lowestY=Math.max(...Object.values(activeTouches).map(t=>t.y));
-            const note=getNoteFromY(lowestY);
-            droneOsc=new Tone.Synth().toDestination();
-            droneOsc.triggerAttack(note);
-        }
-        return;
     }
-
-    // single note
     const note=getNoteFromY(y);
     const osc=new Tone.Synth().toDestination();
     osc.triggerAttack(note);
     activeTouches[id].osc=osc;
 }
-
 function updateTouch(y,x,id){
     if(activeTouches[id] && activeTouches[id].osc){
         const note=getNoteFromY(y);
-        activeTouches[id].osc.setNote? activeTouches[id].osc.setNote(note):activeTouches[id].osc.triggerAttack(note);
+        activeTouches[id].osc.setNote(note);
     }
 }
-
 function endTouch(id){
     if(activeTouches[id]){
-        if(activeTouches[id].osc){activeTouches[id].osc.triggerRelease(); activeTouches[id].osc.dispose();}
+        if(activeTouches[id].osc){
+            activeTouches[id].osc.triggerRelease();
+            activeTouches[id].osc.dispose();
+        }
         delete activeTouches[id];
-        if(Object.keys(activeTouches).length<2 && arpeggioInterval){clearInterval(arpeggioInterval); arpeggioInterval=null;}
+        if(Object.keys(activeTouches).length<2 && arpeggioInterval){
+            clearInterval(arpeggioInterval);
+            arpeggioInterval=null;
+        }
     }
 }
 
-function stopDrone(){if(droneOsc){droneOsc.triggerRelease(); droneOsc.dispose(); droneOsc=null;}}
-
+// Arpeggiator
 function startArpeggio(baseY){
-    const scale=scales[currentScale]; const tIndex=tonalities.indexOf(currentTonality);
-    const h=window.innerHeight; const pos=1-(baseY/h);
-    const totalNotes=scale.length*2; const baseIndex=Math.floor(pos*totalNotes);
-    const notes=[]; let idx=baseIndex;
+    const scale=scales[currentScale];
+    const tIndex=tonalities.indexOf(currentTonality);
+    const h=window.innerHeight;
+    const pos=1-(baseY/h);
+    const totalNotes=scale.length*2;
+    const baseIndex=Math.floor(pos*totalNotes);
+    const notes=[];
+    let idx=baseIndex;
     for(let i=0;i<8;i++){
         const octave=3+Math.floor(idx/scale.length);
         const semitone=(scale[idx%scale.length]+tIndex)%12;
@@ -240,7 +399,8 @@ function startArpeggio(baseY){
         idx+=2;
     }
     const bpm=parseInt(document.getElementById("arpeggioBPM").value)||120;
-    const intervalMs=60000/bpm; let nIdx=0;
+    const intervalMs=60000/bpm;
+    let nIdx=0;
     const type=document.getElementById("arpeggioType").value;
     arpeggioInterval=setInterval(()=>{
         synth.triggerRelease();
@@ -248,35 +408,46 @@ function startArpeggio(baseY){
         if(type==="up") nIdx=(nIdx+1)%notes.length;
         else if(type==="down") nIdx=(nIdx-1+notes.length)%notes.length;
         else if(type==="random") nIdx=Math.floor(Math.random()*notes.length);
-    }, intervalMs);
+    },intervalMs);
 }
 
 // Pointer events
-window.addEventListener("mousedown", e=>startTouch(e.clientY,e.clientX,e.target.closest('.menu-container')? "menu":"mouse"));
-window.addEventListener("mousemove", e=>updateTouch(e.clientY,e.clientX,"mouse"));
-window.addEventListener("mouseup", e=>endTouch("mouse"));
-window.addEventListener("touchstart", e=>{
-    for(const t of e.touches) startTouch(t.clientY,t.clientX,t.target.closest('.menu-container')? "menu":t.identifier);
+window.addEventListener("mousedown",e=>startTouch(e.clientY,e.clientX,"mouse"));
+window.addEventListener("mousemove",e=>updateTouch(e.clientY,e.clientX,"mouse"));
+window.addEventListener("mouseup",e=>endTouch("mouse"));
+
+window.addEventListener("touchstart",e=>{
+    for(const t of e.touches){
+        const el=e.target.closest("header")? "header" : t.identifier;
+        startTouch(t.clientY,t.clientX,el);
+    }
 });
-window.addEventListener("touchmove", e=>{for(const t of e.touches) updateTouch(t.clientY,t.clientX,t.identifier);});
-window.addEventListener("touchend", e=>{for(const t of e.changedTouches) endTouch(t.identifier);});
+window.addEventListener("touchmove",e=>{
+    for(const t of e.touches) updateTouch(t.clientY,t.clientX,t.identifier);
+});
+window.addEventListener("touchend",e=>{
+    for(const t of e.changedTouches) endTouch(t.identifier);
+});
+
+// Menu toggle
+document.querySelector(".menu-icon").addEventListener("click",()=>{
+    const d=document.querySelector(".dropdown");
+    d.style.display=(d.style.display==="flex")?"none":"flex";
+});
 
 // Stop button
-document.querySelector(".stop-button").addEventListener("click", ()=>{
-    // Stop all active notes
+document.querySelector(".stop-button").addEventListener("click",()=>{
+    // Stop all oscillators
+    if(arpeggioInterval){clearInterval(arpeggioInterval); arpeggioInterval=null;}
+    if(droneOsc){droneOsc.triggerRelease(); droneOsc.dispose(); droneOsc=null;}
     for(const id in activeTouches){
         if(activeTouches[id].osc){activeTouches[id].osc.triggerRelease(); activeTouches[id].osc.dispose();}
     }
     activeTouches={};
-    if(arpeggioInterval){clearInterval(arpeggioInterval); arpeggioInterval=null;}
-    stopDrone();
-});
-
-// Menu toggle
-document.querySelector(".menu-icon").addEventListener("click", ()=>{
-    const d=document.querySelector(".dropdown");
-    d.style.display=(d.style.display==="flex")?"none":"flex";
+    createSynth(document.getElementById("instrumentSelect").value);
+    applyEffect(document.getElementById("effectSelect").value);
 });
 </script>
+
 </body>
 </html>
