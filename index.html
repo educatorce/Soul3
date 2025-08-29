@@ -21,8 +21,7 @@ header h1{font-family:'Billabong',cursive;font-size:28px;margin:0;color:#fff;}
 .actions button{background:none;border:none;cursor:pointer;color:#eee;font-size:18px;}
 .actions button:hover{color:#ff4081;}
 .actions button.liked{color:#ed4956;}
-.video-volume{width:100%;margin-top:5px;}
-img, video{user-select:none;}
+img, video{user-select:none;width:100%;border-radius:8px;}
 </style>
 </head>
 <body>
@@ -59,12 +58,6 @@ img, video{user-select:none;}
   <option value="pentatonicMajor">Pentatonic Major</option>
   <option value="pentatonicMinor">Pentatonic Minor</option>
 </select>
-<select id="tonalitySelect">
-  <option value="C">C</option><option value="C#">C#</option><option value="D">D</option>
-  <option value="D#">D#</option><option value="E">E</option><option value="F">F</option>
-  <option value="F#">F#</option><option value="G">G</option><option value="G#">G#</option>
-  <option value="A">A</option><option value="A#">A#</option><option value="B">B</option>
-</select>
 <select id="arpeggioType">
   <option value="up">Ascendente</option>
   <option value="down">Descendente</option>
@@ -86,9 +79,7 @@ img, video{user-select:none;}
 let postId=0,isLoading=false;
 let synth,effectNode,lowPass=new Tone.Filter(20000,"lowpass").toDestination();
 let currentScale="major",currentTonality="C";
-let activeTouches={};
-let arpeggioInterval=null,arpeggioNotes=[],arpeggioIndex=0;
-let arpeggioActive=false;
+let activeTouches={},arpeggioInterval=null,arpeggioNotes=[],arpeggioIndex=0,arpeggioActive=false;
 
 // --- Synth ---
 function createSynth(type="Synth"){if(synth)synth.dispose(); synth=new Tone.PolySynth(Tone[type]).connect(lowPass);}
@@ -120,6 +111,10 @@ function releaseNoteTouch(id){ if(activeTouches[id]){synth.triggerRelease(active
 
 // --- Arpeggiator ---
 function startArpeggio(rootNote,bpm,type){
+    // Stop constant notes
+    for(let id in activeTouches) synth.triggerRelease(activeTouches[id].note);
+    activeTouches={};
+
     stopArpeggio();
     arpeggioActive=true;
     const rootIndex=tonalities.indexOf(rootNote.replace(/[0-9]/g,""));
@@ -166,8 +161,7 @@ function renderMedia(filePath){
   if(!filePath) return "";
   const ext=filePath.split('.').pop().toLowerCase();
   if(["jpg","jpeg","png"].includes(ext)) return `<img src="${filePath}" style="width:100%; border-radius:8px;">`;
-  if(ext==="mp4") return `<div><video src="${filePath}" style="width:100%; border-radius:8px;" muted preload="metadata"></video>
-  <input type="range" class="video-volume" min="0" max="1" step="0.01" value="0.2"></div>`;
+  if(ext==="mp4") return `<div><video src="${filePath}" style="width:100%; border-radius:8px;" muted preload="metadata"></video></div>`;
   return "";
 }
 function generatePost(){
@@ -183,12 +177,8 @@ function createPost(postData){
   const div=document.createElement("div"); div.className="post";
   div.innerHTML=`<div class="post-header"><div class="avatar">${postData.name[0]}</div><div><strong>${postData.name}</strong></div></div>
   <div>${postData.text}</div>${postData.media?renderMedia(postData.media):""}<div class="actions"><button class="like-btn">❤️</button></div>`;
-  const volSlider=div.querySelector(".video-volume");
-  if(volSlider){ 
-      const video=div.querySelector("video"); video.pause(); video.volume=volSlider.value;
-      video.addEventListener("click",()=>video.paused?video.play():video.pause());
-      volSlider.addEventListener("input",()=>{video.volume=volSlider.value;});
-  }
+  const video=div.querySelector("video");
+  if(video){ video.pause(); video.volume=0.2; video.addEventListener("click",()=>video.paused?video.play():video.pause()); }
   return div;
 }
 function loadMore(){ if(isLoading) return; isLoading=true;
