@@ -1,244 +1,332 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Melodic Feed</title>
-<style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Melodic Feed</title>
+  <style>
     @import url('https://fonts.googleapis.com/css2?family=Billabong&display=swap');
+
     body {
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        margin: 0;
-        background: #fafafa;
-        user-select: none; /* impedir selección */
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #fafafa;
     }
+
     header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 10px;
-        background: white;
-        border-bottom: 1px solid #dbdbdb;
-        position: sticky;
-        top: 0;
-        z-index: 10;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px;
+      background: white;
+      border-bottom: 1px solid #dbdbdb;
+      position: sticky;
+      top: 0;
+      z-index: 10;
     }
+
     header h1 {
-        font-family: 'Billabong', cursive;
-        font-size: 28px;
+      font-family: 'Billabong', cursive;
+      font-size: 28px;
+      margin: 0;
     }
-    .menu-icon {
-        font-size: 22px;
-        cursor: pointer;
+
+    #feed {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
     }
-    .dropdown {
-        display: none;
-        flex-direction: column;
-        position: absolute;
-        top: 50px;
-        right: 10px;
-        background: white;
-        border: 1px solid #ccc;
-        padding: 10px;
-        border-radius: 8px;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-        z-index: 20;
-    }
-    .dropdown label {
-        font-size: 14px;
-        margin-top: 5px;
-    }
-    .feed {
-        max-width: 600px;
-        margin: auto;
-        padding: 10px;
-    }
+
     .post {
-        background: white;
-        border: 1px solid #dbdbdb;
-        border-radius: 10px;
-        margin-bottom: 20px;
-        overflow: hidden;
+      width: 100%;
+      max-width: 600px;
+      margin: 20px 0;
+      background: white;
+      border: 1px solid #dbdbdb;
+      border-radius: 8px;
+      overflow: hidden;
     }
+
     .post-header {
-        display: flex;
-        align-items: center;
-        padding: 10px;
+      display: flex;
+      align-items: center;
+      padding: 10px;
     }
+
     .avatar {
-        width: 40px;
-        height: 40px;
-        border-radius: 20px;
-        margin-right: 10px;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      margin-right: 10px;
     }
+
     .username {
-        font-weight: bold;
-        font-size: 14px;
+      font-weight: bold;
     }
-    .post-content {
-        padding: 10px;
-        font-size: 14px;
+
+    .post img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 8px;
+      cursor: pointer;
     }
-    .post img, .post video {
-        width: 100%;
-        height: auto;
-        max-height: 70vh; /* límite para móvil */
-        object-fit: contain; /* mantener proporción */
-        display: block;
-    }
+
     .post video {
-        background: black;
-        cursor: pointer;
+      width: 100%;
+      height: auto;
+      border-radius: 8px;
+      cursor: pointer;
     }
+
     .post-actions {
-        display: flex;
-        justify-content: space-around;
-        padding: 8px;
-        border-top: 1px solid #eee;
+      display: flex;
+      padding: 8px;
     }
+
     .post-actions button {
-        border: none;
-        background: none;
-        cursor: pointer;
-        font-size: 14px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      margin-right: 10px;
     }
-</style>
+
+    .post-description {
+      padding: 0 10px 10px 10px;
+    }
+
+    /* dropdown empieza oculto */
+    .dropdown {
+      display: none;
+      position: absolute;
+      right: 10px;
+      top: 50px;
+      background: white;
+      border: 1px solid #dbdbdb;
+      border-radius: 8px;
+      padding: 10px;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    #instrument {
+      width: 100%;
+      height: 300px;
+      background: #eee;
+      margin: 20px 0;
+      touch-action: none;
+      position: relative;
+    }
+
+    .skeleton-post {
+      width: 100%;
+      max-width: 600px;
+      height: 400px;
+      background: #ddd;
+      border-radius: 8px;
+      margin: 20px 0;
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0% { opacity: 1; }
+      50% { opacity: 0.5; }
+      100% { opacity: 1; }
+    }
+  </style>
 </head>
 <body>
-<header>
+  <header>
     <h1>Melodic Feed</h1>
-    <div class="menu-icon">☰</div>
-    <div class="dropdown">
-        <label>BPM: <input type="number" id="arpeggioBPM" value="120" min="40" max="240"></label>
-        <label>Arpeggio Type:
-            <select id="arpeggioType">
-                <option value="up">Ascendente</option>
-                <option value="down">Descendente</option>
-                <option value="random">Random</option>
-            </select>
-        </label>
-        <label>Escala:
-            <select id="scaleSelect">
-                <option value="major">Mayor</option>
-                <option value="minor">Menor</option>
-                <option value="pentatonic">Pentatónica</option>
-            </select>
-        </label>
+    <div>
+      <button onclick="toggleDropdown()">☰</button>
+      <div id="menu" class="dropdown">
+        <button onclick="setScale('major')">Major Scale</button>
+        <button onclick="setScale('minor')">Minor Scale</button>
+        <button onclick="setArpeggio('up')">Arpeggio Up</button>
+        <button onclick="setArpeggio('down')">Arpeggio Down</button>
+        <button onclick="setArpeggio('random')">Arpeggio Random</button>
+        <button onclick="toggleEffect('chorus')">Chorus</button>
+        <button onclick="toggleEffect('reverb')">Reverb</button>
+        <button onclick="toggleEffect('distortion')">Distortion</button>
+      </div>
     </div>
-</header>
-<div class="feed" id="feed"></div>
+  </header>
 
-<script src="https://unpkg.com/tone"></script>
-<script>
-// --- Datos ficticios ---
-const users=["Luna","Orfeo","Sibila","Dafne","Eurídice","Apolo"];
-const descriptions=["Perdido en melodías","Una nota tras otra","El eco del alma","Paisajes sonoros","Arpegios del viento","Silencio entre acordes"];
-const mediaList=["media/img1.jpg","media/img2.jpg","media/vid1.mp4","media/img3.jpg","media/vid2.mp4","media/img4.jpg"];
+  <div id="feed"></div>
+  <div id="instrument"></div>
 
-function generatePost(){
-    if(mediaList.length===0) return null;
-    const user=users[Math.floor(Math.random()*users.length)];
-    const desc=descriptions[Math.floor(Math.random()*descriptions.length)];
-    const media=mediaList.shift();
-    return {user:user,text:desc,media:media,time:"Just now"};
-}
-function renderMedia(m){
-    if(m.endsWith(".mp4")) return `<video preload="metadata" muted><source src="${m}" type="video/mp4"></video>`;
-    return `<img src="${m}" alt="">`;
-}
-function createPost(data){
-    const feed=document.getElementById("feed");
-    const post=document.createElement("div"); post.className="post";
-    post.innerHTML=`<div class="post-header"><img src="https://placekitten.com/40/40" class="avatar"><div>
-    <div class="username">${data.user}</div><div style="font-size:12px;color:#999;">${data.time}</div></div></div>
-    <div class="post-content">${data.text}</div>${data.media?renderMedia(data.media):""}
-    <div class="post-actions"><button>👍 Like</button><button>💬 Comment</button><button>📤 Share</button></div>`;
-    const video=post.querySelector("video");
-    if(video){video.addEventListener("click",()=>{video.muted=false; video.play();});}
-    feed.appendChild(post); return post;
-}
-function loadMore(){for(let i=0;i<5;i++){const d=generatePost(); if(d) createPost(d);}}
-window.addEventListener("DOMContentLoaded",()=>{loadMore();
-    const sentinel=document.createElement("div"); document.getElementById("feed").appendChild(sentinel);
-    const obs=new IntersectionObserver(e=>{if(e[0].isIntersecting) loadMore();},{rootMargin:"200px"});
-    obs.observe(sentinel);
-});
+  <script src="https://cdn.jsdelivr.net/npm/tone@14.8.39/build/Tone.js"></script>
+  <script>
+    const posts = [
+      {user:"Alice", avatar:"https://via.placeholder.com/32", media:"https://www.w3schools.com/html/mov_bbb.mp4", description:"Beautiful day!", type:"video"},
+      {user:"Bob", avatar:"https://via.placeholder.com/32", media:"https://picsum.photos/400/300", description:"Look at this!", type:"image"},
+      {user:"Charlie", avatar:"https://via.placeholder.com/32", media:"https://picsum.photos/400/301", description:"Another post", type:"image"},
+    ];
 
-// --- Synth & escalas ---
-const tonalities=["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
-const scales={major:[0,2,4,5,7,9,11],minor:[0,2,3,5,7,8,10],pentatonic:[0,2,4,7,9]};
-let currentScale="major",currentTonality="C";
-let activeTouches={},arpeggioInterval=null;
-const synth=new Tone.Synth().toDestination();
+    let feed = document.getElementById('feed');
+    let postIndex = 0;
 
-function getNoteFromY(y){
-    const scale=scales[currentScale]; const idx=tonalities.indexOf(currentTonality);
-    const h=window.innerHeight; const pos=1-(y/h); const total=scale.length*2;
-    const index=Math.floor(pos*total); const octave=3+Math.floor(index/scale.length);
-    const semitone=(scale[index%scale.length]+idx)%12;
-    return tonalities[semitone]+octave;
-}
-
-function startTouch(y,x,id){
-    Tone.start();
-    activeTouches[id]={y:y,x:x,osc:null};
-    if(Object.keys(activeTouches).length===2){
-        if(arpeggioInterval){clearInterval(arpeggioInterval);arpeggioInterval=null;return;}
-        const baseY=Math.min(...Object.values(activeTouches).map(t=>t.y));
-        startArpeggio(baseY);return;
+    function createPost(p){
+      let div = document.createElement('div');
+      div.className="post";
+      let header = document.createElement('div');
+      header.className="post-header";
+      header.innerHTML = '<img class="avatar" src="'+p.avatar+'"><span class="username">'+p.user+'</span>';
+      div.appendChild(header);
+      if(p.type==="image"){
+        let img=document.createElement('img');
+        img.src=p.media;
+        div.appendChild(img);
+      } else {
+        let vid=document.createElement('video');
+        vid.src=p.media;
+        vid.controls=true;
+        div.appendChild(vid);
+      }
+      let actions=document.createElement('div');
+      actions.className="post-actions";
+      actions.innerHTML='<button>♥</button><button>💬</button><button>↗</button>';
+      div.appendChild(actions);
+      let desc=document.createElement('div');
+      desc.className="post-description";
+      desc.innerText=p.description;
+      div.appendChild(desc);
+      return div;
     }
-    const note=getNoteFromY(y);
-    const osc=new Tone.Synth().toDestination(); osc.triggerAttack(note);
-    activeTouches[id].osc=osc;
-}
-function updateTouch(y,x,id){
-    if(activeTouches[id] && activeTouches[id].osc){
-        const note=getNoteFromY(y);
-        activeTouches[id].osc.setNote(note);
+
+    function loadPosts(){
+      for(let i=0;i<2;i++){
+        if(postIndex<posts.length){
+          feed.appendChild(createPost(posts[postIndex++]));
+        }
+      }
     }
-}
-function endTouch(id){
-    if(activeTouches[id]){
-        if(activeTouches[id].osc){activeTouches[id].osc.triggerRelease(); activeTouches[id].osc.dispose();}
+
+    loadPosts();
+
+    let observer=new IntersectionObserver((entries)=>{
+      entries.forEach(entry=>{
+        if(entry.isIntersecting){
+          let skeleton=document.createElement('div');
+          skeleton.className="skeleton-post";
+          feed.appendChild(skeleton);
+          setTimeout(()=>{
+            feed.removeChild(skeleton);
+            loadPosts();
+          },1000);
+        }
+      });
+    });
+    observer.observe(document.querySelector('footer')||document.body.appendChild(document.createElement('footer')));
+
+    function toggleDropdown(){
+      let menu=document.getElementById('menu');
+      menu.style.display=menu.style.display==='flex'?'none':'flex';
+    }
+
+    const instrument=document.getElementById('instrument');
+    let activeTouches={};
+    let scaleType="major";
+    let arpeggioType="up";
+    let effects={chorus:null,reverb:null,distortion:null};
+    let synth=createSynth();
+    let arpeggioInterval=null;
+
+    function createSynth(){
+      let s=new Tone.Synth().toDestination();
+      return s;
+    }
+
+    function setScale(type){ scaleType=type; }
+    function setArpeggio(type){ arpeggioType=type; }
+    function toggleEffect(name){
+      if(effects[name]){
+        effects[name].dispose();
+        effects[name]=null;
+      } else {
+        if(name==="chorus") effects[name]=new Tone.Chorus().toDestination().start();
+        if(name==="reverb") effects[name]=new Tone.Reverb().toDestination();
+        if(name==="distortion") effects[name]=new Tone.Distortion(0.4).toDestination();
+      }
+    }
+
+    function getNotes(){
+      return scaleType==="major"?["C4","D4","E4","F4","G4","A4","B4","C5"]:["C4","D4","Eb4","F4","G4","Ab4","Bb4","C5"];
+    }
+
+    instrument.addEventListener('touchstart',(e)=>{
+      e.preventDefault();
+      for(let touch of e.changedTouches){
+        startTouch(touch.identifier,touch.clientX,touch.clientY);
+      }
+    },{passive:false});
+
+    instrument.addEventListener('touchmove',(e)=>{
+      e.preventDefault();
+      for(let touch of e.changedTouches){
+        moveTouch(touch.identifier,touch.clientX,touch.clientY);
+      }
+    },{passive:false});
+
+    instrument.addEventListener('touchend',(e)=>{
+      e.preventDefault();
+      for(let touch of e.changedTouches){
+        endTouch(touch.identifier);
+      }
+    },{passive:false});
+
+    function startTouch(id,x,y){
+      let notes=getNotes();
+      let note=notes[Math.floor((y/instrument.clientHeight)*notes.length)];
+      let osc=new Tone.Synth().toDestination();
+      osc.triggerAttack(note);
+      activeTouches[id]={osc:osc,note:note};
+
+      if(Object.keys(activeTouches).length===2){
+        startArpeggio();
+      }
+    }
+
+    function moveTouch(id,x,y){
+      if(activeTouches[id]){
+        let notes=getNotes();
+        let note=notes[Math.floor((y/instrument.clientHeight)*notes.length)];
+        if(note!==activeTouches[id].note){
+          activeTouches[id].osc.triggerRelease();
+          activeTouches[id].osc.dispose();
+          let osc=new Tone.Synth().toDestination();
+          osc.triggerAttack(note);
+          activeTouches[id]={osc:osc,note:note};
+        }
+      }
+    }
+
+    function endTouch(id){
+      if(activeTouches[id]){
+        activeTouches[id].osc.triggerRelease();
+        activeTouches[id].osc.dispose();
         delete activeTouches[id];
-        if(arpeggioInterval){clearInterval(arpeggioInterval); arpeggioInterval=null;}
+      }
+      // mejora: solo detener arpegiador si no quedan dedos
+      if(Object.keys(activeTouches).length===0 && arpeggioInterval){
+        clearInterval(arpeggioInterval);
+        arpeggioInterval=null;
+      }
     }
-}
 
-function startArpeggio(baseY){
-    const scale=scales[currentScale]; const tIndex=tonalities.indexOf(currentTonality);
-    const h=window.innerHeight; const pos=1-(baseY/h); const total=scale.length*2;
-    const baseIndex=Math.floor(pos*total); const baseOct=3+Math.floor(baseIndex/scale.length);
-    const baseSemi=(scale[baseIndex%scale.length]+tIndex)%12;
-    const notes=[]; let idx=baseIndex;
-    for(let i=0;i<8;i++){const oct=3+Math.floor(idx/scale.length);
-        const semi=(scale[idx%scale.length]+tIndex)%12;
-        notes.push(tonalities[semi]+oct); idx+=2;}
-    const bpm=parseInt(document.getElementById("arpeggioBPM").value)||120;
-    const intervalMs=60000/bpm; let nIdx=0;
-    const type=document.getElementById("arpeggioType").value;
-    arpeggioInterval=setInterval(()=>{
-        synth.triggerRelease(); synth.triggerAttackRelease(notes[nIdx],"8n");
-        if(type==="up") nIdx=(nIdx+1)%notes.length;
-        else if(type==="down") nIdx=(nIdx-1+notes.length)%notes.length;
-        else nIdx=Math.floor(Math.random()*notes.length);
-    },intervalMs);
-}
-
-// --- Eventos pointer/touch ---
-window.addEventListener("mousedown",e=>startTouch(e.clientY,e.clientX,"mouse"));
-window.addEventListener("mousemove",e=>updateTouch(e.clientY,e.clientX,"mouse"));
-window.addEventListener("mouseup",e=>endTouch("mouse"));
-window.addEventListener("touchstart",e=>{for(const t of e.touches) startTouch(t.clientY,t.clientX,t.identifier);});
-window.addEventListener("touchmove",e=>{for(const t of e.touches) updateTouch(t.clientY,t.clientX,t.identifier);});
-window.addEventListener("touchend",e=>{for(const t of e.changedTouches) endTouch(t.identifier);});
-
-// --- Menu toggle ---
-document.querySelector(".menu-icon").addEventListener("click",()=>{
-    const d=document.querySelector(".dropdown");
-    d.style.display=(d.style.display==="flex")?"none":"flex";
-});
-document.getElementById("scaleSelect").addEventListener("change",e=>{currentScale=e.target.value;});
-</script>
+    function startArpeggio(){
+      if(arpeggioInterval) return;
+      let notes=getNotes();
+      let i=0;
+      arpeggioInterval=setInterval(()=>{
+        let note;
+        if(arpeggioType==="up") note=notes[i%notes.length];
+        if(arpeggioType==="down") note=notes[notes.length-(i%notes.length)-1];
+        if(arpeggioType==="random") note=notes[Math.floor(Math.random()*notes.length)];
+        synth.triggerAttackRelease(note,"8n");
+        i++;
+      },300);
+    }
+  </script>
 </body>
 </html>
