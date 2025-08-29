@@ -9,7 +9,7 @@
 body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,Cantarell,'Open Sans','Helvetica Neue',sans-serif; background:#121212; color:#eee; margin:0; }
 header { display:flex; justify-content:space-between; align-items:center; padding:10px 20px; background:#1e1e1e; border-bottom:1px solid #333; position:sticky; top:0; z-index:1000; }
 header h1 { font-family:'Billabong',cursive; font-size:28px; margin:0; color:#fff; }
-.menu-container { position:relative; }
+.menu-container { position:relative; display:flex; align-items:center; gap:10px; }
 .menu-icon { cursor:pointer; font-size:22px; color:#fff; }
 .dropdown { display:none; position:absolute; top:40px; right:0; background:#1e1e1e; border:1px solid #333; border-radius:6px; padding:10px; z-index:1001; flex-direction:column; gap:5px; }
 .feed { max-width:600px; margin:20px auto; }
@@ -23,7 +23,6 @@ header h1 { font-family:'Billabong',cursive; font-size:28px; margin:0; color:#ff
 .skeleton-post { background:#1e1e1e; border-radius:8px; padding:15px; margin-bottom:15px; height:150px; animation:pulse 1.5s infinite; border:1px solid #333; }
 @keyframes pulse { 0%{opacity:0.6;}50%{opacity:1;}100%{opacity:0.6;} }
 video { width:100%; border-radius:8px; cursor:pointer; }
-img { width:100%; border-radius:8px; cursor:pointer; }
 </style>
 </head>
 <body>
@@ -31,6 +30,7 @@ img { width:100%; border-radius:8px; cursor:pointer; }
 <h1>Melofeed</h1>
 <div class="menu-container">
 <span class="menu-icon">☰</span>
+<button id="stopButton">Stop</button>
 <div class="dropdown">
 <select id="instrumentSelect">
 <option value="Synth">Synth</option>
@@ -91,8 +91,9 @@ img { width:100%; border-radius:8px; cursor:pointer; }
 const feed = document.getElementById("feed");
 let postId=0,isLoading=false;
 let synth,effectNode;
-let activeTouches={},arpeggioInterval=null;
+let activeTouches={},arpeggioInterval=null,droneOsc=null;
 
+// Scales
 const scales={
 major:[0,2,4,5,7,9,11],minor:[0,2,3,5,7,8,10],dorian:[0,2,3,5,7,9,10],
 phrygian:[0,1,3,5,7,8,10],lydian:[0,2,4,6,7,9,11],mixolydian:[0,2,4,5,7,9,10],
@@ -101,21 +102,27 @@ locrian:[0,1,3,5,6,8,10],harmonicMinor:[0,2,3,5,7,8,11],pentatonicMajor:[0,2,4,7
 const tonalities=["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
 let currentScale="major",currentTonality="C";
 
+// Create synth
 function createSynth(type="Synth"){if(synth) synth.dispose(); synth=new Tone[type]().toDestination();}
-function applyEffect(type){if(effectNode){effectNode.dispose(); synth.connect(Tone.Destination);}
-if(type!=="none"){switch(type){case"reverb":effectNode=new Tone.Reverb().toDestination();break;
-case"chorus":effectNode=new Tone.Chorus().toDestination();break;
-case"distortion":effectNode=new Tone.Distortion(0.4).toDestination();break;
-case"tremolo":effectNode=new Tone.Tremolo().start().toDestination();break;
-case"vibrato":effectNode=new Tone.Vibrato().toDestination();break;
-case"delay":effectNode=new Tone.FeedbackDelay("8n",0.5).toDestination();break;} synth.connect(effectNode);}}
+function applyEffect(type){if(effectNode){effectNode.dispose(); synth.connect(Tone.Destination);} if(type!=="none"){switch(type){case"reverb":effectNode=new Tone.Reverb().toDestination();break; case"chorus":effectNode=new Tone.Chorus().toDestination();break; case"distortion":effectNode=new Tone.Distortion(0.4).toDestination();break; case"tremolo":effectNode=new Tone.Tremolo().start().toDestination();break; case"vibrato":effectNode=new Tone.Vibrato().toDestination();break; case"delay":effectNode=new Tone.FeedbackDelay("8n",0.5).toDestination();break;} synth.connect(effectNode);}}
 createSynth("Synth");
 
-// Menu events
+// Menu
 document.getElementById("instrumentSelect").addEventListener("change",e=>{createSynth(e.target.value);applyEffect(document.getElementById("effectSelect").value);});
 document.getElementById("effectSelect").addEventListener("change",e=>applyEffect(e.target.value));
 document.getElementById("scaleSelect").addEventListener("change",e=>currentScale=e.target.value);
 document.getElementById("tonalitySelect").addEventListener("change",e=>currentTonality=e.target.value);
+
+// Stop button
+document.getElementById("stopButton").addEventListener("click",()=>{
+  // Detener todas las notas y arpeggio
+  Object.values(activeTouches).forEach(t=>{
+    if(t.osc){t.osc.triggerRelease(); t.osc.dispose();}
+  });
+  activeTouches={};
+  if(arpeggioInterval){clearInterval(arpeggioInterval); arpeggioInterval=null;}
+  if(droneOsc){droneOsc.triggerRelease(); droneOsc.dispose(); droneOsc=null;}
+});
 
 // Get note from Y
 function getNoteFromY(y){const h=window.innerHeight; const pos=1-(y/h); const scale=scales[currentScale]; const tIndex=tonalities.indexOf(currentTonality);
@@ -134,39 +141,69 @@ const names=['Emma','Liam','Olivia','Noah','Ava']; const texts=['Having a great 
 return {id:postId++,name:names[Math.floor(Math.random()*names.length)],text:texts[Math.floor(Math.random()*texts.length)],time:'2 hours ago',media:media};
 }
 function createPost(data){if(!data) return null;
-const post=document.createElement("div"); post.className="post"; 
+const post=document.createElement("div"); post.className="post";
 post.innerHTML=`<div class="post-header"><div class="avatar">${data.name[0]}</div><div><div><strong>${data.name}</strong></div><div style="font-size:12px;color:#999;">${data.time}</div></div></div>
 <div>${data.text}</div>${data.media?renderMedia(data.media):""}<div class="post-actions">
 <button>👍 Like</button><button>💬 Comment</button><button>📤 Share</button></div>`;
 const video=post.querySelector("video"); if(video){video.addEventListener("click",()=>{video.muted=false; video.play();});}
-feed.appendChild(post); return post;}
+feed.appendChild(post); return post;
+}
 
 // Infinite scroll
 function loadMore(){if(isLoading) return; isLoading=true; for(let i=0;i<5;i++){const data=generatePost(); if(data) createPost(data);} isLoading=false;}
-window.addEventListener("DOMContentLoaded",()=>{loadMore(); const sentinel=document.createElement("div"); feed.appendChild(sentinel);
-const obs=new IntersectionObserver(entries=>{if(entries[0].isIntersecting) loadMore();},{rootMargin:"200px 0px"});
-obs.observe(sentinel);});
+window.addEventListener("DOMContentLoaded",()=>{
+  loadMore();
+  const sentinel=document.createElement("div"); feed.appendChild(sentinel);
+  const obs=new IntersectionObserver(entries=>{if(entries[0].isIntersecting) loadMore();},{rootMargin:"200px 0px"});
+  obs.observe(sentinel);
+});
 
-// Touch input & arpeggiator
-function startTouch(y,x,id){Tone.start();
-activeTouches[id]={y:y,x:x,osc:null};
-if(Object.keys(activeTouches).length===2){if(arpeggioInterval){clearInterval(arpeggioInterval); arpeggioInterval=null;}
-synth.triggerRelease(); // stop any held note
-const firstY=Math.min(...Object.values(activeTouches).map(t=>t.y)); startArpeggio(firstY); return;}
-const note=getNoteFromY(y);
-const osc=new Tone.Synth().toDestination(); osc.triggerAttack(note); activeTouches[id].osc=osc;}
-function updateTouch(y,x,id){if(activeTouches[id] && activeTouches[id].osc){const note=getNoteFromY(y); activeTouches[id].osc.setNote(note);}}
-function endTouch(id){if(activeTouches[id]){if(activeTouches[id].osc){activeTouches[id].osc.triggerRelease(); activeTouches[id].osc.dispose();} delete activeTouches[id];}
-if(Object.keys(activeTouches).length===0 && arpeggioInterval){clearInterval(arpeggioInterval); arpeggioInterval=null;}}
+// Touch input & arpeggiator & drone
+function startTouch(y,x,id){
+  Tone.start();
+  activeTouches[id]={y:y,x:x,osc:null};
+  const keys=Object.keys(activeTouches).length;
+  if(keys===1){
+    const note=getNoteFromY(y);
+    const osc=new Tone.Synth().toDestination();
+    osc.triggerAttack(note);
+    activeTouches[id].osc=osc;
+  } else if(keys===2){
+    // detener notas individuales
+    Object.values(activeTouches).forEach(t=>{if(t.osc){t.osc.triggerRelease(); t.osc.dispose(); t.osc=null;}});
+    const firstY=Math.min(...Object.values(activeTouches).map(t=>t.y));
+    startArpeggio(firstY);
+  } else if(keys===3){
+    // drone
+    if(!droneOsc){
+      const note=getNoteFromY(y);
+      droneOsc=new Tone.Synth().toDestination();
+      droneOsc.triggerAttack(note);
+    }
+  }
+}
+function updateTouch(y,x,id){
+  if(activeTouches[id] && activeTouches[id].osc){const note=getNoteFromY(y); activeTouches[id].osc.setNote?activeTouches[id].osc.setNote(note):activeTouches[id].osc.triggerAttack(note);}
+}
+function endTouch(id){
+  if(activeTouches[id]){
+    if(activeTouches[id].osc){activeTouches[id].osc.triggerRelease(); activeTouches[id].osc.dispose();}
+    delete activeTouches[id];
+    if(Object.keys(activeTouches).length<2 && arpeggioInterval){clearInterval(arpeggioInterval); arpeggioInterval=null;}
+    // Drone no se detiene al soltar dedos
+  }
+}
 
 // Arpeggiator
 function startArpeggio(baseY){
-const scale=scales[currentScale]; const tIndex=tonalities.indexOf(currentTonality); const h=window.innerHeight; const pos=1-(baseY/h);
-const totalNotes=scale.length*2; const baseIndex=Math.floor(pos*totalNotes); const notes=[];
-let idx=baseIndex; for(let i=0;i<8;i++){const octave=3+Math.floor(idx/scale.length); const semitone=(scale[idx%scale.length]+tIndex)%12; notes.push(tonalities[semitone]+octave); idx+=2;}
-const bpm=parseInt(document.getElementById("arpeggioBPM").value)||120; const intervalMs=60000/bpm; let nIdx=0; const type=document.getElementById("arpeggioType").value;
-arpeggioInterval=setInterval(()=>{synth.triggerRelease(); synth.triggerAttackRelease(notes[nIdx],"8n");
-if(type==="up") nIdx=(nIdx+1)%notes.length; else if(type==="down") nIdx=(nIdx-1+notes.length)%notes.length; else if(type==="random") nIdx=Math.floor(Math.random()*notes.length);},intervalMs);}
+  const scale=scales[currentScale]; const tIndex=tonalities.indexOf(currentTonality); const h=window.innerHeight; const pos=1-(baseY/h);
+  const totalNotes=scale.length*2; const baseIndex=Math.floor(pos*totalNotes); const notes=[];
+  let idx=baseIndex;
+  for(let i=0;i<8;i++){const octave=3+Math.floor(idx/scale.length); const semitone=(scale[idx%scale.length]+tIndex)%12; notes.push(tonalities[semitone]+octave); idx+=2;}
+  const bpm=parseInt(document.getElementById("arpeggioBPM").value)||120; const intervalMs=60000/bpm; let nIdx=0; const type=document.getElementById("arpeggioType").value;
+  arpeggioInterval=setInterval(()=>{synth.triggerRelease(); synth.triggerAttackRelease(notes[nIdx],"8n");
+  if(type==="up") nIdx=(nIdx+1)%notes.length; else if(type==="down") nIdx=(nIdx-1+notes.length)%notes.length; else if(type==="random") nIdx=Math.floor(Math.random()*notes.length);},intervalMs);
+}
 
 // Pointer events
 window.addEventListener("mousedown",e=>startTouch(e.clientY,e.clientX,"mouse"));
@@ -177,9 +214,10 @@ window.addEventListener("touchmove",e=>{for(const t of e.touches)updateTouch(t.c
 window.addEventListener("touchend",e=>{for(const t of e.changedTouches)endTouch(t.identifier);});
 
 // Menu toggle
-const dropdown=document.querySelector(".dropdown");
-dropdown.style.display="none"; // ensure menu starts closed
-document.querySelector(".menu-icon").addEventListener("click",()=>{dropdown.style.display=(dropdown.style.display==="flex")?"none":"flex";});
+document.querySelector(".menu-icon").addEventListener("click",()=>{
+  const d=document.querySelector(".dropdown"); 
+  d.style.display=(d.style.display==="flex")?"none":"flex";
+});
 </script>
 </body>
 </html>
