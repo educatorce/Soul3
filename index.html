@@ -25,6 +25,7 @@ header h1 { font-family:'Billabong', cursive; font-size:28px; margin:0; color:#f
 </style>
 </head>
 <body>
+
 <header>
 <h1>Melofeed</h1>
 <div class="menu-container">
@@ -74,27 +75,20 @@ header h1 { font-family:'Billabong', cursive; font-size:28px; margin:0; color:#f
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.39/Tone.js"></script>
 <script src="media-list.js"></script>
-
 <script>
+// ------------------- Variables -------------------
 let postId=0,isLoading=false,activeTouches={};
-const scales={
-major:[0,2,4,5,7,9,11],minor:[0,2,3,5,7,8,10],dorian:[0,2,3,5,7,9,10],
-phrygian:[0,1,3,5,7,8,10],lydian:[0,2,4,6,7,9,11],mixolydian:[0,2,4,5,7,9,10],
-locrian:[0,1,3,5,6,8,10],harmonicMinor:[0,2,3,5,7,8,11],
-pentatonicMajor:[0,2,4,7,9],pentatonicMinor:[0,3,5,7,10]
-};
+const scales={ major:[0,2,4,5,7,9,11], minor:[0,2,3,5,7,8,10], dorian:[0,2,3,5,7,9,10], phrygian:[0,1,3,5,7,8,10], lydian:[0,2,4,6,7,9,11], mixolydian:[0,2,4,5,7,9,10], locrian:[0,1,3,5,6,8,10], harmonicMinor:[0,2,3,5,7,8,11], pentatonicMajor:[0,2,4,7,9], pentatonicMinor:[0,3,5,7,10]};
 const tonalities=["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
 let currentScale="major",currentTonality="C";
-document.getElementById("scaleSelect").addEventListener("change",e=>currentScale=e.target.value);
-document.getElementById("tonalitySelect").addEventListener("change",e=>currentTonality=e.target.value);
 
-// ---------------- Tone.js ----------------
+// ------------------- Tone.js -------------------
 let synth,effectNode,lowPass=new Tone.Filter(20000,"lowpass").toDestination();
 createSynth("Synth");
 
 function createSynth(type="Synth"){ if(synth)synth.dispose(); synth=new Tone.PolySynth(Tone.Synth).connect(lowPass);}
 function applyEffect(type){
-if(effectNode){ effectNode.dispose(); synth.disconnect(); synth.connect(lowPass); }
+if(effectNode){ effectNode.dispose(); synth.disconnect(); synth.connect(lowPass);}
 if(type!=="none"){ switch(type){
 case "reverb": effectNode=new Tone.Reverb().toDestination(); break;
 case "chorus": effectNode=new Tone.Chorus().toDestination(); break;
@@ -102,66 +96,68 @@ case "distortion": effectNode=new Tone.Distortion(0.4).toDestination(); break;
 case "tremolo": effectNode=new Tone.Tremolo().start().toDestination(); break;
 case "vibrato": effectNode=new Tone.Vibrato().toDestination(); break;
 case "delay": effectNode=new Tone.FeedbackDelay("8n",0.5).toDestination(); break; }
-synth.disconnect(); synth.connect(effectNode); } }
+synth.disconnect(); synth.connect(effectNode);}
+}
+
 document.getElementById("instrumentSelect").addEventListener("change",e=>{createSynth(e.target.value); applyEffect(document.getElementById("effectSelect").value);});
 document.getElementById("effectSelect").addEventListener("change",e=>applyEffect(e.target.value));
+document.getElementById("scaleSelect").addEventListener("change",e=>currentScale=e.target.value);
+document.getElementById("tonalitySelect").addEventListener("change",e=>currentTonality=e.target.value);
 
-// ------------------- Notas y multi-touch escalonado -------------------
+// ------------------- Multi-touch escalonado -------------------
 function getNoteFromY(y){
   const height=window.innerHeight;
   const position=1-(y/height);
   const scale=scales[currentScale];
   const tonalityIndex=tonalities.indexOf(currentTonality);
-  const totalNotes=scale.length*2; // 2 octavas
+  const totalNotes=scale.length*2;
   const noteIndex=Math.floor(position*totalNotes);
   const octave=3+Math.floor(noteIndex/scale.length);
   const semitone=(scale[noteIndex%scale.length]+tonalityIndex)%12;
   return tonalities[semitone]+octave;
 }
 
-// Escalado de terceras según el dedo
 function getIntervalsForFinger(note,fingerIndex){
-    const scale=scales[currentScale];
-    const tonalityIndex=tonalities.indexOf(currentTonality);
-    const baseSemitone=tonalities.indexOf(note.slice(0,-1));
-    const octave=parseInt(note.slice(-1));
-    let notes=[note];
-    for(let i=1;i<=fingerIndex;i++){
-        const interval=scale[(scale.indexOf(baseSemitone%12)+i*2)%scale.length];
-        notes.push(tonalities[(interval+tonalityIndex)%12]+octave);
-    }
-    return notes;
+  const scale=scales[currentScale];
+  const tonalityIndex=tonalities.indexOf(currentTonality);
+  const baseSemitone=tonalities.indexOf(note.slice(0,-1));
+  const octave=parseInt(note.slice(-1));
+  let notes=[note];
+  for(let i=1;i<=fingerIndex;i++){
+    const interval=scale[(scale.indexOf(baseSemitone%12)+i*2)%scale.length];
+    notes.push(tonalities[(interval+tonalityIndex)%12]+octave);
+  }
+  return notes;
 }
 
 function updateSynthFromTouches(){
-    synth.releaseAll();
-    const touches=Object.values(activeTouches);
-    touches.forEach((t,idx)=>{
-        const note=getNoteFromY(t.y);
-        const notesToPlay=getIntervalsForFinger(note,idx);
-        notesToPlay.forEach(n=>synth.triggerAttack(n));
-    });
+  synth.releaseAll();
+  Object.values(activeTouches).forEach((t,idx)=>{
+    const note=getNoteFromY(t.y);
+    const notesToPlay=getIntervalsForFinger(note,idx);
+    notesToPlay.forEach(n=>synth.triggerAttack(n));
+  });
 }
 
 function updateFilterFromX(x){
-    const freq=Tone.Frequency(200+(x/window.innerWidth)*8000);
-    lowPass.frequency.setValueAtTime(freq,Tone.now());
+  const freq=Tone.Frequency(200 + (x/window.innerWidth)*8000);
+  lowPass.frequency.setValueAtTime(freq,Tone.now());
 }
 
 window.addEventListener("touchstart",e=>{
-    Tone.start();
-    for(let t of e.changedTouches){ activeTouches[t.identifier]={x:t.clientX,y:t.clientY}; }
-    Object.values(activeTouches).forEach(t=>updateFilterFromX(t.x));
-    updateSynthFromTouches();
+  Tone.start();
+  for(let t of e.changedTouches) activeTouches[t.identifier]={x:t.clientX,y:t.clientY};
+  Object.values(activeTouches).forEach(t=>updateFilterFromX(t.x));
+  updateSynthFromTouches();
 });
 window.addEventListener("touchmove",e=>{
-    for(let t of e.changedTouches){ activeTouches[t.identifier]={x:t.clientX,y:t.clientY}; }
-    Object.values(activeTouches).forEach(t=>updateFilterFromX(t.x));
-    updateSynthFromTouches();
+  for(let t of e.changedTouches) activeTouches[t.identifier]={x:t.clientX,y:t.clientY};
+  Object.values(activeTouches).forEach(t=>updateFilterFromX(t.x));
+  updateSynthFromTouches();
 });
 window.addEventListener("touchend",e=>{
-    for(let t of e.changedTouches) delete activeTouches[t.identifier];
-    updateSynthFromTouches();
+  for(let t of e.changedTouches) delete activeTouches[t.identifier];
+  updateSynthFromTouches();
 });
 
 // ------------------- Posts -------------------
@@ -182,3 +178,20 @@ function generatePost(){
       const xhr=new XMLHttpRequest();
       xhr.open('HEAD',media,false);
       xhr.send();
+      if(xhr.status>=200 && xhr.status<400){
+        postData={id:postId++, name:'User'+postId, text:'Random post', time:'Now', media:media};
+      }
+    }catch(e){}
+    attempts++;
+  }
+  return postData;
+}
+
+function createPost(postData){
+  if(!postData) return null;
+  const div=document.createElement('div');
+  div.className='post';
+  div.innerHTML=`<div class="post-header"><div class="avatar">${postData.name[0]}</div>
+  <div><strong>${postData.name}</strong><div style="font-size:12px;color:#999;">${postData.time}</div></div></div>
+  <div>${postData.text}</div>${renderMedia(postData.media)}
+  <div class="actions"><button>❤️</button><button>
