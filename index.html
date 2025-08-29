@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Melodic Feed Piano</title>
+<title>Melodic Feed Optimized</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Billabong&display=swap');
 body, .feed { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif; margin:0; background:#121212; color:#e0e0e0; overflow-x:hidden; }
@@ -112,49 +112,58 @@ effectCheckboxes.forEach(cb=>cb.addEventListener('change',e=>{
   else enabledEffect=null;
 }));
 
-// --- Audio system ---
-const instrumentsNotes={
-  'Piano':['C3','D3','E3','F3','G3','A3','B3','C4','D4','E4','F4','G4','A4','B4','C5'],
-  'Guitar':['C3','D3','E3','F3','G3','A3','B3','C4','D4','E4','F4','G4','A4','B4','C5'],
-  'Flute':['C3','D3','E3','F3','G3','A3','B3','C4','D4','E4','F4','G4','A4','B4','C5']
-};
-const audioCache={};
-let currentAudio=null;
-function playNote(note){
-  if(currentAudio){currentAudio.pause(); currentAudio.currentTime=0;}
-  if(!audioCache[selectedInstrument]) audioCache[selectedInstrument]={};
-  if(!audioCache[selectedInstrument][note]){
-    const audio=new Audio(`samples/${selectedInstrument.toLowerCase()}/${note}.mp3`);
-    audioCache[selectedInstrument][note]=audio;
-  }
-  currentAudio=audioCache[selectedInstrument][note];
-  currentAudio.play();
-  document.getElementById('note-display').textContent=note;
+// --- Audio system (optimized to prevent mobile saturation) ---
+const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+const masterGain = audioContext.createGain();
+masterGain.gain.value = 0.3;
+masterGain.connect(audioContext.destination);
+
+const maxVoices = 2;
+const voices = [];
+for(let i=0;i<maxVoices;i++){
+  const osc = audioContext.createOscillator();
+  osc.type='sine';
+  const gain = audioContext.createGain();
+  gain.gain.value=0;
+  osc.connect(gain); gain.connect(masterGain); osc.start();
+  voices.push({osc,gain,active:false});
 }
-function yToNote(y){
-  const notes=instrumentsNotes[selectedInstrument];
-  const index=Math.floor((1-(y/window.innerHeight))*notes.length);
-  return notes[Math.max(0,Math.min(notes.length-1,index))];
+
+let lastUpdate=0; const throttle=50;
+function yToFreq(y){
+  const freqs=[261.63,293.66,329.63,392.00,440.00,523.25,587.33,659.25];
+  const idx=Math.floor((1-(y/window.innerHeight))*freqs.length);
+  return freqs[Math.max(0,Math.min(freqs.length-1,idx))];
 }
+
+function triggerVoice(clientY){
+  const now = performance.now();
+  if(now - lastUpdate < throttle) return;
+  lastUpdate=now;
+  const freq=yToFreq(clientY);
+  const voice=voices.find(v=>!v.active) || voices[0];
+  voice.osc.frequency.setValueAtTime(freq,audioContext.currentTime);
+  voice.gain.gain.setValueAtTime(0.2,audioContext.currentTime);
+  voice.active=true;
+}
+
+function releaseVoices(){
+  voices.forEach(v=>{v.gain.gain.setValueAtTime(0,audioContext.currentTime); v.active=false;});
+}
+
 const touchVisual=document.getElementById('touch-visual');
-document.addEventListener('pointerdown', e=>{
+document.addEventListener('pointerdown',e=>{
   if(e.target.closest('.header')) return;
-  const note=yToNote(e.clientY);
-  playNote(note);
+  triggerVoice(e.clientY);
   touchVisual.style.display='block'; touchVisual.style.left=e.clientX+'px'; touchVisual.style.top=e.clientY+'px';
 });
-document.addEventListener('pointermove', e=>{
+document.addEventListener('pointermove',e=>{
   if(e.pressure>0 || e.buttons>0){
-    const note=yToNote(e.clientY);
-    playNote(note);
+    triggerVoice(e.clientY);
     touchVisual.style.left=e.clientX+'px'; touchVisual.style.top=e.clientY+'px';
   }
 });
-document.addEventListener('pointerup', e=>{
-  currentAudio=null;
-  touchVisual.style.display='none';
-  document.getElementById('note-display').textContent='';
-});
+document.addEventListener('pointerup',e=>{releaseVoices(); touchVisual.style.display='none'; document.getElementById('note-display').textContent='';});
 </script>
 </body>
 </html>
