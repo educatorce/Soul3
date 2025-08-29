@@ -90,13 +90,12 @@ let postId = 0;
 let isLoading = false;
 
 // --- Audio setup ---
-let synth, effectNode, lowPass;
-let audioContext = null;
-let masterGain = null;
-let isAudioEnabled = true;
+let synth, effectNode;
 let activeTouches = {};
 let arpeggioInterval = null;
+let arpeggioNotes = [];
 
+// --- Scales ---
 const scales = {
 major:[0,2,4,5,7,9,11], minor:[0,2,3,5,7,8,10], dorian:[0,2,3,5,7,9,10], phrygian:[0,1,3,5,7,8,10],
 lydian:[0,2,4,6,7,9,11], mixolydian:[0,2,4,5,7,9,10], locrian:[0,1,3,5,6,8,10],
@@ -106,9 +105,9 @@ const tonalities = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
 let currentScale="major";
 let currentTonality="C";
 
-// --- Synth setup ---
+// --- Synth functions ---
 function createSynth(type="Synth"){
-    if(synth)synth.dispose();
+    if(synth) synth.dispose();
     synth = new Tone[type]().toDestination();
 }
 function applyEffect(type){
@@ -128,24 +127,21 @@ function applyEffect(type){
 createSynth("Synth");
 
 // --- Menu ---
-document.getElementById("instrumentSelect").addEventListener("change",e=>{
-    createSynth(e.target.value);
-    applyEffect(document.getElementById("effectSelect").value);
-});
+document.getElementById("instrumentSelect").addEventListener("change",e=>{createSynth(e.target.value);applyEffect(document.getElementById("effectSelect").value);});
 document.getElementById("effectSelect").addEventListener("change",e=>applyEffect(e.target.value));
 document.getElementById("scaleSelect").addEventListener("change",e=>currentScale=e.target.value);
 document.getElementById("tonalitySelect").addEventListener("change",e=>currentTonality=e.target.value);
 
-// --- Utility ---
+// --- Utilities ---
 function getNoteFromY(y){
-    const height = window.innerHeight;
-    const position = 1-(y/height);
-    const scale = scales[currentScale];
-    const tonalityIndex = tonalities.indexOf(currentTonality);
-    const totalNotes = scale.length*2;
-    const noteIndex = Math.floor(position*totalNotes);
-    const octave = 3+Math.floor(noteIndex/scale.length);
-    const semitone = (scale[noteIndex % scale.length] + tonalityIndex) % 12;
+    const height=window.innerHeight;
+    const position=1-(y/height);
+    const scale=scales[currentScale];
+    const tonalityIndex=tonalities.indexOf(currentTonality);
+    const totalNotes=scale.length*2;
+    const noteIndex=Math.floor(position*totalNotes);
+    const octave=3+Math.floor(noteIndex/scale.length);
+    const semitone=(scale[noteIndex % scale.length]+tonalityIndex)%12;
     return tonalities[semitone]+octave;
 }
 
@@ -161,26 +157,25 @@ function renderMedia(filePath){
 
 // --- Post generation ---
 function generatePost(){
-    if(typeof mediaList==="undefined" || mediaList.length===0)return null;
+    if(typeof mediaList==="undefined" || mediaList.length===0) return null;
     let media=null;
     let attempts=0;
     while(attempts<5){
-        const candidate = mediaList[Math.floor(Math.random()*mediaList.length)];
-        if(candidate) {media=candidate; break;}
+        const candidate=mediaList[Math.floor(Math.random()*mediaList.length)];
+        if(candidate){ media=candidate; break;}
         attempts++;
     }
-    if(!media)return null;
+    if(!media) return null;
     return {id:postId++, media:media};
 }
 function createPost(data){
-    if(!data)return null;
+    if(!data) return null;
     const post=document.createElement("div");
     post.className="post";
     post.innerHTML=renderMedia(data.media);
-    // --- Video click to play ---
-    const video = post.querySelector("video");
+    const video=post.querySelector("video");
     if(video){
-        video.volume = 0.3;
+        video.volume=0.3;
         video.addEventListener("click", ()=>{ video.paused?video.play():video.pause(); });
     }
     feed.appendChild(post);
@@ -189,7 +184,7 @@ function createPost(data){
 
 // --- Infinite scroll ---
 function loadMore(){
-    if(isLoading)return;
+    if(isLoading) return;
     isLoading=true;
     const skeletons=[];
     for(let i=0;i<3;i++){
@@ -200,7 +195,7 @@ function loadMore(){
     }
     setTimeout(()=>{
         skeletons.forEach(s=>{
-            const postData = generatePost();
+            const postData=generatePost();
             if(postData) createPost(postData);
             s.remove();
         });
@@ -215,22 +210,15 @@ const observer = new IntersectionObserver(entries=>{
 observer.observe(sentinel);
 
 // --- Input handling ---
-let active=false;
-window.addEventListener("mousedown", e=>{startTouch(e.clientY,e.clientX, e.pointerId||"mouse");});
-window.addEventListener("mousemove", e=>{updateTouch(e.clientY,e.clientX, e.pointerId||"mouse");});
-window.addEventListener("mouseup", e=>{endTouch(e.pointerId||"mouse");});
-window.addEventListener("touchstart", e=>{for(const t of e.touches)startTouch(t.clientY,t.clientX,t.identifier);});
-window.addEventListener("touchmove", e=>{for(const t of e.touches)updateTouch(t.clientY,t.clientX,t.identifier);});
-window.addEventListener("touchend", e=>{for(const t of e.changedTouches)endTouch(t.identifier);});
-
-// --- Touch / synth ---
 function startTouch(y,x,id){
-    if(Object.keys(activeTouches).length===2){
-        if(arpeggioInterval){clearInterval(arpeggioInterval); arpeggioInterval=null; return;}
-        startArpeggio(Object.values(activeTouches)[0].y);
+    Tone.start();
+    if(Object.keys(activeTouches).length===1){
+        // Activar arpeggio con segundo dedo
+        const firstY=Math.min(...Object.values(activeTouches).map(t=>t.y));
+        if(arpeggioInterval){ clearInterval(arpeggioInterval); arpeggioInterval=null; return;}
+        startArpeggio(firstY);
         return;
     }
-    Tone.start();
     activeTouches[id]={y:y,x:x,osc:null};
     const note=getNoteFromY(y);
     const osc=new Tone.Synth().toDestination();
@@ -253,17 +241,14 @@ function endTouch(id){
 
 // --- Arpeggiator ---
 function startArpeggio(baseY){
-    if(arpeggioInterval){clearInterval(arpeggioInterval); arpeggioInterval=null;}
     const scale=scales[currentScale];
     const tonalityIndex=tonalities.indexOf(currentTonality);
     const height=window.innerHeight;
-    const pos=1-(baseY/height);
+    const position=1-(baseY/height);
     const totalNotes=scale.length*2;
-    const baseIndex=Math.floor(pos*totalNotes);
+    const baseIndex=Math.floor(position*totalNotes);
     const baseOctave=3+Math.floor(baseIndex/scale.length);
     const baseSemitone=(scale[baseIndex%scale.length]+tonalityIndex)%12;
-    const baseNote=tonalities[baseSemitone]+baseOctave;
-
     const notes=[];
     let currentIndex=baseIndex;
     for(let i=0;i<8;i++){
@@ -274,8 +259,8 @@ function startArpeggio(baseY){
     }
     const bpm=parseInt(document.getElementById("arpeggioBPM").value)||120;
     const intervalMs=60000/bpm;
-    let idx=0;
     const type=document.getElementById("arpeggioType").value;
+    let idx=0;
     arpeggioInterval=setInterval(()=>{
         synth.triggerRelease();
         synth.triggerAttackRelease(notes[idx],"8n");
@@ -284,6 +269,15 @@ function startArpeggio(baseY){
         if(type==="random") idx=Math.floor(Math.random()*notes.length);
     }, intervalMs);
 }
+
+// --- Pointer events ---
+window.addEventListener("mousedown", e=>startTouch(e.clientY,e.clientX,"mouse"));
+window.addEventListener("mousemove", e=>updateTouch(e.clientY,e.clientX,"mouse"));
+window.addEventListener("mouseup", e=>endTouch("mouse"));
+window.addEventListener("touchstart", e=>{for(const t of e.touches)startTouch(t.clientY,t.clientX,t.identifier);});
+window.addEventListener("touchmove", e=>{for(const t of e.touches)updateTouch(t.clientY,t.clientX,t.identifier);});
+window.addEventListener("touchend", e=>{for(const t of e.changedTouches)endTouch(t.identifier);});
+
 </script>
 </body>
 </html>
