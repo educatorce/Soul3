@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Melofeed</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Billabong&display=swap');
@@ -132,6 +132,33 @@ header h1 {
 }
 
 @keyframes pulse {0%{opacity:0.6;}50%{opacity:1;}100%{opacity:0.6;}}
+
+/* Video overlay */
+.video-container {
+    position: relative;
+    display: inline-block;
+    width: 100%;
+}
+.video-container video {
+    width: 100%;
+    height: auto;
+    border-radius: 8px;
+    cursor: pointer;
+}
+.video-overlay {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 48px;
+    color: #fff;
+    text-shadow: 0 0 8px #000;
+    pointer-events: none;
+    display: none;
+}
+.video-container.paused .video-overlay {
+    display: block;
+}
 </style>
 </head>
 <body>
@@ -278,11 +305,16 @@ function getNoteFromY(y){
     return tonalities[semitone]+octave;
 }
 
-// Media rendering
+// Media rendering with overlay
 function renderMedia(path){
     const ext=path.split(".").pop().toLowerCase();
-    if(["jpg","jpeg","png"].includes(ext)) return `<img src="${path}" alt="Post media">`;
-    else if(ext==="mp4") return `<video src="${path}" preload="metadata" muted></video>`;
+    if(["jpg","jpeg","png"].includes(ext)) 
+        return `<img src="${path}" alt="Post media">`;
+    else if(ext==="mp4") 
+        return `<div class="video-container paused">
+                  <video src="${path}" preload="metadata" muted autoplay playsinline></video>
+                  <div class="video-overlay">▶️</div>
+                </div>`;
     else return "";
 }
 
@@ -306,6 +338,7 @@ function generatePost(){
         media:media
     };
 }
+
 function createPost(data){
     if(!data) return null;
     const post=document.createElement("div");
@@ -325,10 +358,28 @@ function createPost(data){
         <button>💬 Comment</button>
         <button>📤 Share</button>
     </div>`;
-    const video=post.querySelector("video");
-    if(video){
-        video.addEventListener("click",()=>{video.muted=false; video.play();});
+
+    // Video overlay logic
+    const videoContainer = post.querySelector(".video-container");
+    if(videoContainer){
+        const video = videoContainer.querySelector("video");
+        const overlay = videoContainer.querySelector(".video-overlay");
+        video.addEventListener("ended", () => {
+            video.currentTime = 0;
+            video.pause();
+            videoContainer.classList.add("paused");
+        });
+        videoContainer.addEventListener("click", () => {
+            if(video.paused){
+                video.play();
+                videoContainer.classList.remove("paused");
+            } else {
+                video.pause();
+                videoContainer.classList.add("paused");
+            }
+        });
     }
+
     feed.appendChild(post);
     return post;
 }
@@ -355,78 +406,40 @@ window.addEventListener("DOMContentLoaded",()=>{
 
 // Touch input & arpeggiator & drone
 function startTouch(y,x,id){
-    if(id === "header") return; // no sound in header
+    if(id === "header") return; 
     Tone.start();
-    
-    // Check if this touch already exists (update position)
     if(activeTouches[id]){
         activeTouches[id].y = y;
         activeTouches[id].x = x;
     } else {
         activeTouches[id]={y:y,x:x};
     }
-    
     const numTouches = Object.keys(activeTouches).length;
-    
-    // Handle 3 or more touches for drone
     if(numTouches >= 3){
-        // Stop arpeggiator if running
-        if(arpeggioInterval){
-            clearInterval(arpeggioInterval);
-            arpeggioInterval=null;
-        }
-        // Stop synth
+        if(arpeggioInterval){ clearInterval(arpeggioInterval); arpeggioInterval=null; }
         if(synth) synth.triggerRelease();
-        
-        // Only create drone if it doesn't exist
         if(!droneOsc){
-            // Create new drone with current synth type and effect
             const lowestY = Math.max(...Object.values(activeTouches).map(t=>t.y));
             const note = getNoteFromY(lowestY);
             const synthType = document.getElementById("instrumentSelect").value;
             droneOsc = new Tone[synthType]();
-            if(effectNode){
-                droneOsc.connect(effectNode);
-            } else {
-                droneOsc.toDestination();
-            }
+            if(effectNode){ droneOsc.connect(effectNode); } else { droneOsc.toDestination(); }
             droneOsc.triggerAttack(note);
         }
         return;
     }
-    
     if(numTouches === 2){
-        // Stop synth
         if(synth) synth.triggerRelease();
-        
-        // Stop drone if playing
-        if(droneOsc){
-            droneOsc.triggerRelease();
-            droneOsc.dispose();
-            droneOsc = null;
-        }
-        
-        // Start arpeggiator only if not already running
+        if(droneOsc){ droneOsc.triggerRelease(); droneOsc.dispose(); droneOsc = null; }
         if(!arpeggioInterval){
             const firstY=Math.min(...Object.values(activeTouches).map(t=>t.y));
             startArpeggio(firstY);
         }
         return;
     }
-    
-    // Single touch - use main synth
     if(numTouches === 1){
-        // Stop arpeggiator and drone if running
-        if(arpeggioInterval){
-            clearInterval(arpeggioInterval);
-            arpeggioInterval=null;
-        }
-        if(droneOsc){
-            droneOsc.triggerRelease();
-            droneOsc.dispose();
-            droneOsc = null;
-        }
-        
+        if(arpeggioInterval){ clearInterval(arpeggioInterval); arpeggioInterval=null; }
+        if(droneOsc){ droneOsc.triggerRelease(); droneOsc.dispose(); droneOsc = null; }
         const note=getNoteFromY(y);
         if(synth) synth.triggerAttack(note);
     }
@@ -436,7 +449,6 @@ function updateTouch(y,x,id){
     if(activeTouches[id]){
         const numTouches = Object.keys(activeTouches).length;
         activeTouches[id].y = y;
-        
         if(numTouches === 1 && synth){
             const note=getNoteFromY(y);
             synth.setNote(note);
@@ -447,34 +459,16 @@ function updateTouch(y,x,id){
 function endTouch(id){
     if(activeTouches[id]){
         delete activeTouches[id];
-        
         const numTouches = Object.keys(activeTouches).length;
-        
-        // If it was the last touch, release synth
-        if(numTouches === 0 && synth){
-            synth.triggerRelease();
-        }
-        
-        // Stop arpeggiator if less than 2 touches
-        if(numTouches < 2 && arpeggioInterval){
-            clearInterval(arpeggioInterval);
-            arpeggioInterval=null;
-            if(synth) synth.triggerRelease();
-        }
-        
-        // Stop drone if less than 3 touches
-        if(numTouches < 3 && droneOsc){
-            droneOsc.triggerRelease();
-            droneOsc.dispose();
-            droneOsc=null;
-        }
+        if(numTouches === 0 && synth){ synth.triggerRelease(); }
+        if(numTouches < 2 && arpeggioInterval){ clearInterval(arpeggioInterval); arpeggioInterval=null; if(synth) synth.triggerRelease(); }
+        if(numTouches < 3 && droneOsc){ droneOsc.triggerRelease(); droneOsc.dispose(); droneOsc=null; }
     }
 }
 
 // Arpeggiator
 function startArpeggio(baseY){
     if(arpeggioInterval) clearInterval(arpeggioInterval);
-    
     const scale=scales[currentScale];
     const tIndex=tonalities.indexOf(currentTonality);
     const h=window.innerHeight;
@@ -493,52 +487,36 @@ function startArpeggio(baseY){
     const intervalMs=60000/bpm;
     let nIdx=0;
     const type=document.getElementById("arpeggioType").value;
-    
     arpeggioInterval=setInterval(()=>{
-        if(synth){
-            synth.triggerAttackRelease(notes[nIdx],"8n");
-        }
+        if(synth){ synth.triggerAttackRelease(notes[nIdx],"8n"); }
         if(type==="up") nIdx=(nIdx+1)%notes.length;
         else if(type==="down") nIdx=(nIdx-1+notes.length)%notes.length;
         else if(type==="random") nIdx=Math.floor(Math.random()*notes.length);
     },intervalMs);
 }
 
-// Pointer events
+// Pointer & touch events
 window.addEventListener("mousedown",e=>{
-    if(!e.target.closest("header") && !e.target.closest(".dropdown")){
-        startTouch(e.clientY,e.clientX,"mouse");
-    }
+    if(!e.target.closest("header") && !e.target.closest(".dropdown")){ startTouch(e.clientY,e.clientX,"mouse"); }
 });
-window.addEventListener("mousemove",e=>{
-    if(activeTouches["mouse"]){
-        updateTouch(e.clientY,e.clientX,"mouse");
-    }
-});
+window.addEventListener("mousemove",e=>{ if(activeTouches["mouse"]){ updateTouch(e.clientY,e.clientX,"mouse"); } });
 window.addEventListener("mouseup",e=>endTouch("mouse"));
-
 window.addEventListener("touchstart",e=>{
     if(!e.target.closest("header") && !e.target.closest(".dropdown")){
         e.preventDefault();
-        for(const t of e.touches){
-            startTouch(t.clientY,t.clientX,t.identifier);
-        }
+        for(const t of e.touches){ startTouch(t.clientY,t.clientX,t.identifier); }
     }
 });
 window.addEventListener("touchmove",e=>{
     if(Object.keys(activeTouches).length > 0){
         e.preventDefault();
-        for(const t of e.touches){
-            updateTouch(t.clientY,t.clientX,t.identifier);
-        }
+        for(const t of e.touches){ updateTouch(t.clientY,t.clientX,t.identifier); }
     }
 });
 window.addEventListener("touchend",e=>{
     if(Object.keys(activeTouches).length > 0){
         e.preventDefault();
-        for(const t of e.changedTouches){
-            endTouch(t.identifier);
-        }
+        for(const t of e.changedTouches){ endTouch(t.identifier); }
     }
 });
 
@@ -551,21 +529,9 @@ document.querySelector(".menu-icon").addEventListener("click",(e)=>{
 
 // Stop button
 document.querySelector(".stop-button").addEventListener("click",()=>{
-    // Stop all sounds
-    if(arpeggioInterval){
-        clearInterval(arpeggioInterval);
-        arpeggioInterval=null;
-    }
-    if(droneOsc){
-        droneOsc.triggerRelease();
-        droneOsc.dispose();
-        droneOsc=null;
-    }
-    if(synth){
-        synth.triggerRelease();
-    }
-    
-    // Clear all touches
+    if(arpeggioInterval){ clearInterval(arpeggioInterval); arpeggioInterval=null; }
+    if(droneOsc){ droneOsc.triggerRelease(); droneOsc.dispose(); droneOsc=null; }
+    if(synth){ synth.triggerRelease(); }
     activeTouches={};
 });
 </script>
