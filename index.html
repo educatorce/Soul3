@@ -202,23 +202,14 @@ function createPost(data){
         video.play();
         let playing = true;
 
-        // Tone.start() al primer click/touch en cualquier parte
-        const startAudioContext = async ()=>{
-            await Tone.start();
-            document.removeEventListener("click", startAudioContext);
-            document.removeEventListener("touchstart", startAudioContext);
-        };
-        document.addEventListener("click", startAudioContext);
-        document.addEventListener("touchstart", startAudioContext);
+        // Conectar video al bus de volumen + reverb
+        const source = Tone.context.createMediaElementSource(video);
+        source.connect(videoReverb);
 
         video.addEventListener("click",(e)=>{
             e.stopPropagation();
             if(playing){ video.pause(); playing=false; } else { video.play(); playing=true; }
         });
-
-        // Conectar video al bus de volumen + reverb
-        const source = Tone.context.createMediaElementSource(video);
-        source.connect(videoReverb);
 
         if(btn){
             btn.addEventListener("click",(e)=>{
@@ -231,6 +222,15 @@ function createPost(data){
     feed.appendChild(post);
     return post;
 }
+
+// Iniciar AudioContext al primer click/touch
+const startAudioContext = async () => {
+    await Tone.start();
+    document.removeEventListener("click", startAudioContext);
+    document.removeEventListener("touchstart", startAudioContext);
+};
+document.addEventListener("click", startAudioContext);
+document.addEventListener("touchstart", startAudioContext);
 
 // Infinite scroll
 function loadMore(){
@@ -253,7 +253,21 @@ window.addEventListener("DOMContentLoaded",()=>{
     obs.observe(sentinel);
 });
 
-// El resto del código de arpegiador, drone, touch y menú se mantiene igual
+// Menú toggle
+document.querySelector(".menu-icon").addEventListener("click",(e)=>{
+    e.stopPropagation();
+    const d=document.querySelector(".dropdown");
+    d.style.display = (d.style.display==="flex") ? "none" : "flex";
+});
+document.body.addEventListener("click",()=>{document.querySelector(".dropdown").style.display="none";});
+
+// Stop button
+document.querySelector(".stop-button").addEventListener("click",()=>{
+    if(arpeggioInterval){ clearInterval(arpeggioInterval); arpeggioInterval=null; }
+    if(droneOsc){ droneOsc.triggerRelease(); droneOsc.dispose(); droneOsc=null; }
+    if(synth){ synth.triggerRelease(); }
+    activeTouches={};
+});
 </script>
 </body>
 </html>
