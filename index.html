@@ -202,10 +202,17 @@ function createPost(data){
         video.play();
         let playing = true;
 
-        // Tone.start() activado al primer click/touch
-        video.addEventListener("click", async (e)=>{
-            e.stopPropagation();
+        // Tone.start() al primer click/touch en cualquier parte
+        const startAudioContext = async ()=>{
             await Tone.start();
+            document.removeEventListener("click", startAudioContext);
+            document.removeEventListener("touchstart", startAudioContext);
+        };
+        document.addEventListener("click", startAudioContext);
+        document.addEventListener("touchstart", startAudioContext);
+
+        video.addEventListener("click",(e)=>{
+            e.stopPropagation();
             if(playing){ video.pause(); playing=false; } else { video.play(); playing=true; }
         });
 
