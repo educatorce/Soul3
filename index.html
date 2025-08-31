@@ -194,6 +194,7 @@ header h1 {
     </div>
 </header>
 <main class="feed" id="feed"></main>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.39/Tone.js"></script>
 <script src="media-list.js"></script>
 <script>
@@ -284,6 +285,7 @@ function generatePost(){
     return { id:postId++, name:names[Math.floor(Math.random()*names.length)], text:texts[Math.floor(Math.random()*texts.length)], time:'2 hours ago', media:media };
 }
 
+// Crear posts con audio normalizado y reverb
 function createPost(data){
     if(!data) return null;
     const post=document.createElement("div");
@@ -310,24 +312,21 @@ function createPost(data){
         video.muted = true;
         video.play();
         let playing = true;
-        const videoPlayer = new Tone.Player({url:video.src, loop:true, autostart:true}).connect(videoVolume);
+
+        // Nodo de audio del video conectado a reverb y volumen
+        const source = Tone.context.createMediaElementSource(video);
+        source.connect(videoVolume);
+
         video.addEventListener("click",(e)=>{
             e.stopPropagation();
-            if(playing){
-                videoPlayer.stop();
-                video.pause();
-                playing=false;
-            } else {
-                videoPlayer.start();
-                video.play();
-                playing=true;
-            }
+            if(playing){ video.pause(); playing=false; }
+            else{ video.play(); playing=true; }
         });
+
         if(btn){
             btn.addEventListener("click",(e)=>{
                 e.stopPropagation();
-                videoPlayer.mute = !videoPlayer.mute;
-                video.muted = videoPlayer.mute;
+                video.muted = !video.muted;
                 btn.textContent = video.muted ? "🔇" : "🔊";
             });
         }
@@ -347,8 +346,17 @@ function loadMore(){
     isLoading = false;
 }
 
-// (El resto del código de arpegiador, touch, menu y stop button se mantiene igual que antes)
+window.addEventListener("DOMContentLoaded",()=>{
+    loadMore();
+    const sentinel=document.createElement("div");
+    feed.appendChild(sentinel);
+    const obs=new IntersectionObserver(entries=>{
+        if(entries[0].isIntersecting) loadMore();
+    },{rootMargin:"200px 0px"});
+    obs.observe(sentinel);
+});
 
+// El resto del código de arpegiador, touch, menu y stop button se mantiene igual que antes
 </script>
 </body>
 </html>
