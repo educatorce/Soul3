@@ -6,192 +6,82 @@
 <title>Melofeed</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Billabong&display=swap');
-body {
-    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,Cantarell,'Open Sans','Helvetica Neue',sans-serif;
-    background:#121212;
-    color:#eee;
-    margin:0;
-}
-header {
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    padding:10px 20px;
-    background:#1e1e1e;
-    border-bottom:1px solid #333;
-    position:sticky;
-    top:0;
-    z-index:1000;
-}
-header h1 {
-    font-family:'Billabong',cursive;
-    font-size:28px;
-    margin:0;
-    color:#fff;
-}
-.menu-container {
-    position:relative;
-    display:flex;
-    align-items:center;
-    gap:10px;
-}
-.menu-icon, .stop-button {
-    cursor:pointer;
-    font-size:22px;
-    color:#fff;
-}
-.dropdown {
-    display:none;
-    position:absolute;
-    top:40px;
-    right:0;
-    background:#1e1e1e;
-    border:1px solid #333;
-    border-radius:6px;
-    padding:10px;
-    z-index:1001;
-    flex-direction:column;
-    gap:5px;
-}
-.feed {
-    max-width:600px;
-    margin:20px auto;
-    padding:0 10px;
-}
-.post {
-    background:#1e1e1e;
-    border:1px solid #333;
-    border-radius:8px;
-    padding:10px;
-    margin-bottom:15px;
-    position:relative;
-}
-.post-header {
-    display:flex;
-    align-items:center;
-    margin-bottom:10px;
-}
-.avatar {
-    width:40px;
-    height:40px;
-    border-radius:50%;
-    background:#3a3a3a;
-    color:#fff;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    margin-right:10px;
-}
-.post-actions {
-    display:flex;
-    justify-content:space-around;
-    margin-top:10px;
-}
-.post-actions button {
-    background:none;
-    border:none;
-    cursor:pointer;
-    color:#eee;
-    font-size:16px;
-}
-.post-actions button:hover {
-    color:#ff4081;
-}
-.post * {
-    user-select:none;
-}
-.post img, video {
-    max-width:100%;
-    height:auto;
-    border-radius:8px;
-    cursor:pointer;
-    display:block;
-}
-.skeleton-post {
-    background:#1e1e1e;
-    border-radius:8px;
-    padding:15px;
-    margin-bottom:15px;
-    height:150px;
-    animation:pulse 1.5s infinite;
-    border:1px solid #333;
-}
-.video-mute-btn {
-    position:absolute;
-    top:10px;
-    right:10px;
-    background:rgba(0,0,0,0.6);
-    color:#fff;
-    border:none;
-    border-radius:4px;
-    padding:2px 6px;
-    cursor:pointer;
-    font-size:12px;
-    z-index:10;
-}
-@keyframes pulse {
-    0%{opacity:0.6;}
-    50%{opacity:1;}
-    100%{opacity:0.6;}
-}
+body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,Cantarell,'Open Sans','Helvetica Neue',sans-serif; background:#121212; color:#eee; margin:0; }
+header { display:flex; justify-content:space-between; align-items:center; padding:10px 20px; background:#1e1e1e; border-bottom:1px solid #333; position:sticky; top:0; z-index:1000; }
+header h1 { font-family:'Billabong',cursive; font-size:28px; margin:0; color:#fff; }
+.menu-container { position:relative; display:flex; align-items:center; gap:10px; }
+.menu-icon, .stop-button { cursor:pointer; font-size:22px; color:#fff; }
+.dropdown { display:none; position:absolute; top:40px; right:0; background:#1e1e1e; border:1px solid #333; border-radius:6px; padding:10px; z-index:1001; flex-direction:column; gap:5px; }
+.feed { max-width:600px; margin:20px auto; padding:0 10px; }
+.post { background:#1e1e1e; border:1px solid #333; border-radius:8px; padding:10px; margin-bottom:15px; position:relative; }
+.post-header { display:flex; align-items:center; margin-bottom:10px; }
+.avatar { width:40px; height:40px; border-radius:50%; background:#3a3a3a; color:#fff; display:flex; align-items:center; justify-content:center; margin-right:10px; }
+.post-actions { display:flex; justify-content:space-around; margin-top:10px; }
+.post-actions button { background:none; border:none; cursor:pointer; color:#eee; font-size:16px; }
+.post-actions button:hover { color:#ff4081; }
+.post * { user-select:none; }
+.post img, video { max-width:100%; height:auto; border-radius:8px; cursor:pointer; display:block; }
+.skeleton-post { background:#1e1e1e; border-radius:8px; padding:15px; margin-bottom:15px; height:150px; animation:pulse 1.5s infinite; border:1px solid #333; }
+.video-mute-btn { position:absolute; top:10px; right:10px; background:rgba(0,0,0,0.6); color:#fff; border:none; border-radius:4px; padding:2px 6px; cursor:pointer; font-size:12px; z-index:10; }
+@keyframes pulse {0%{opacity:0.6;}50%{opacity:1;}100%{opacity:0.6;}}
 </style>
 </head>
 <body>
 <header>
-    <h1>Melofeed</h1>
-    <div class="menu-container">
-        <span class="stop-button">⏹️</span>
-        <span class="menu-icon">☰</span>
-        <div class="dropdown">
-            <select id="instrumentSelect">
-                <option value="Synth">Synth</option>
-                <option value="AMSynth">AMSynth</option>
-                <option value="FMSynth">FMSynth</option>
-                <option value="DuoSynth">DuoSynth</option>
-            </select>
-            <select id="effectSelect">
-                <option value="none">No Effect</option>
-                <option value="reverb">Reverb</option>
-                <option value="chorus">Chorus</option>
-                <option value="distortion">Distortion</option>
-                <option value="tremolo">Tremolo</option>
-                <option value="vibrato">Vibrato</option>
-                <option value="delay">Delay</option>
-            </select>
-            <select id="scaleSelect">
-                <option value="major">Major</option>
-                <option value="minor">Minor</option>
-                <option value="dorian">Dorian</option>
-                <option value="phrygian">Phrygian</option>
-                <option value="lydian">Lydian</option>
-                <option value="mixolydian">Mixolydian</option>
-                <option value="locrian">Locrian</option>
-                <option value="harmonicMinor">Harmonic Minor</option>
-                <option value="pentatonicMajor">Pentatonic Major</option>
-                <option value="pentatonicMinor">Pentatonic Minor</option>
-            </select>
-            <select id="tonalitySelect">
-                <option value="C">C</option>
-                <option value="C#">C#</option>
-                <option value="D">D</option>
-                <option value="D#">D#</option>
-                <option value="E">E</option>
-                <option value="F">F</option>
-                <option value="F#">F#</option>
-                <option value="G">G</option>
-                <option value="G#">G#</option>
-                <option value="A">A</option>
-                <option value="A#">A#</option>
-                <option value="B">B</option>
-            </select>
-            <input type="number" id="arpeggioBPM" placeholder="BPM" value="120">
-            <select id="arpeggioType">
-                <option value="up">Ascending</option>
-                <option value="down">Descending</option>
-                <option value="random">Random</option>
-            </select>
-        </div>
-    </div>
+<h1>Melofeed</h1>
+<div class="menu-container">
+<span class="stop-button">⏹️</span>
+<span class="menu-icon">☰</span>
+<div class="dropdown">
+    <select id="instrumentSelect">
+        <option value="Synth">Synth</option>
+        <option value="AMSynth">AMSynth</option>
+        <option value="FMSynth">FMSynth</option>
+        <option value="DuoSynth">DuoSynth</option>
+    </select>
+    <select id="effectSelect">
+        <option value="none">No Effect</option>
+        <option value="reverb">Reverb</option>
+        <option value="chorus">Chorus</option>
+        <option value="distortion">Distortion</option>
+        <option value="tremolo">Tremolo</option>
+        <option value="vibrato">Vibrato</option>
+        <option value="delay">Delay</option>
+    </select>
+    <select id="scaleSelect">
+        <option value="major">Major</option>
+        <option value="minor">Minor</option>
+        <option value="dorian">Dorian</option>
+        <option value="phrygian">Phrygian</option>
+        <option value="lydian">Lydian</option>
+        <option value="mixolydian">Mixolydian</option>
+        <option value="locrian">Locrian</option>
+        <option value="harmonicMinor">Harmonic Minor</option>
+        <option value="pentatonicMajor">Pentatonic Major</option>
+        <option value="pentatonicMinor">Pentatonic Minor</option>
+    </select>
+    <select id="tonalitySelect">
+        <option value="C">C</option>
+        <option value="C#">C#</option>
+        <option value="D">D</option>
+        <option value="D#">D#</option>
+        <option value="E">E</option>
+        <option value="F">F</option>
+        <option value="F#">F#</option>
+        <option value="G">G</option>
+        <option value="G#">G#</option>
+        <option value="A">A</option>
+        <option value="A#">A#</option>
+        <option value="B">B</option>
+    </select>
+    <input type="number" id="arpeggioBPM" placeholder="BPM" value="120">
+    <select id="arpeggioType">
+        <option value="up">Ascending</option>
+        <option value="down">Descending</option>
+        <option value="random">Random</option>
+    </select>
+</div>
+</div>
 </header>
 <main class="feed" id="feed"></main>
 
@@ -199,18 +89,18 @@ header h1 {
 <script src="media-list.js"></script>
 <script>
 const feed = document.getElementById("feed");
-let postId=0,isLoading=false;
-let synth,effectNode;
-let activeTouches={},arpeggioInterval=null, droneOsc=null;
+let postId=0, isLoading=false;
+let synth, effectNode;
+let activeTouches={}, arpeggioInterval=null, droneOsc=null;
 
-// Reverb y volumen normalizado para videos (-3dB)
-const videoReverb = new Tone.Reverb(2).toDestination();
-const videoVolume = new Tone.Volume(-3).connect(videoReverb);
+// Video bus con volumen normalizado y reverb independiente
+const videoVolume = new Tone.Volume(-3).toDestination();
+const videoReverb = new Tone.Reverb(2).connect(videoVolume);
 
 // Scales
 const scales={ major:[0,2,4,5,7,9,11], minor:[0,2,3,5,7,8,10], dorian:[0,2,3,5,7,9,10], phrygian:[0,1,3,5,7,8,10], lydian:[0,2,4,6,7,9,11], mixolydian:[0,2,4,5,7,9,10], locrian:[0,1,3,5,6,8,10], harmonicMinor:[0,2,3,5,7,8,11], pentatonicMajor:[0,2,4,7,9], pentatonicMinor:[0,3,5,7,10] };
 const tonalities=["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
-let currentScale="major",currentTonality="C";
+let currentScale="major", currentTonality="C";
 
 // Crear synth
 function createSynth(type="Synth"){
@@ -232,20 +122,19 @@ function applyEffect(type){
             case"vibrato": effectNode=new Tone.Vibrato(5,0.1).toDestination(); break;
             case"delay": effectNode=new Tone.FeedbackDelay("8n",0.5).toDestination(); break;
         }
-        synth.disconnect();
-        synth.connect(effectNode);
+        synth.disconnect(); synth.connect(effectNode);
     } else { synth.disconnect(); synth.toDestination(); }
 }
 
 createSynth("Synth");
 
 // Menu listeners
-document.getElementById("instrumentSelect").addEventListener("change",e=>createSynth(e.target.value));
-document.getElementById("effectSelect").addEventListener("change",e=>applyEffect(e.target.value));
-document.getElementById("scaleSelect").addEventListener("change",e=>currentScale=e.target.value);
-document.getElementById("tonalitySelect").addEventListener("change",e=>currentTonality=e.target.value);
+document.getElementById("instrumentSelect").addEventListener("change", e=>createSynth(e.target.value));
+document.getElementById("effectSelect").addEventListener("change", e=>applyEffect(e.target.value));
+document.getElementById("scaleSelect").addEventListener("change", e=>currentScale=e.target.value);
+document.getElementById("tonalitySelect").addEventListener("change", e=>currentTonality=e.target.value);
 
-// Nota desde posición Y
+// Nota desde Y
 function getNoteFromY(y){
     const h=window.innerHeight;
     const pos=1-(y/h);
@@ -270,7 +159,7 @@ function renderMedia(path){
     } else return "";
 }
 
-// Generar posts
+// Generar post
 function generatePost(){
     if(typeof mediaList==="undefined" || mediaList.length===0) return null;
     let media=null, attempts=0;
@@ -285,7 +174,7 @@ function generatePost(){
     return { id:postId++, name:names[Math.floor(Math.random()*names.length)], text:texts[Math.floor(Math.random()*texts.length)], time:'2 hours ago', media:media };
 }
 
-// Crear posts con audio normalizado y reverb
+// Crear post
 function createPost(data){
     if(!data) return null;
     const post=document.createElement("div");
@@ -313,15 +202,16 @@ function createPost(data){
         video.play();
         let playing = true;
 
-        // Nodo de audio del video conectado a reverb y volumen
-        const source = Tone.context.createMediaElementSource(video);
-        source.connect(videoVolume);
-
-        video.addEventListener("click",(e)=>{
+        // Tone.start() activado al primer click/touch
+        video.addEventListener("click", async (e)=>{
             e.stopPropagation();
-            if(playing){ video.pause(); playing=false; }
-            else{ video.play(); playing=true; }
+            await Tone.start();
+            if(playing){ video.pause(); playing=false; } else { video.play(); playing=true; }
         });
+
+        // Conectar video al bus de volumen + reverb
+        const source = Tone.context.createMediaElementSource(video);
+        source.connect(videoReverb);
 
         if(btn){
             btn.addEventListener("click",(e)=>{
@@ -356,7 +246,7 @@ window.addEventListener("DOMContentLoaded",()=>{
     obs.observe(sentinel);
 });
 
-// El resto del código de arpegiador, touch, menu y stop button se mantiene igual que antes
+// El resto del código de arpegiador, drone, touch y menú se mantiene igual
 </script>
 </body>
 </html>
