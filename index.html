@@ -93,17 +93,20 @@ let postId=0,isLoading=false;
 let synth,effectNode;
 let activeTouches={},arpeggioInterval=null, droneOsc=null;
 
-// Scales
+// Bus para videos con volumen normalizado y reverb
+const videoBus = new Tone.Gain(0.3).toDestination();
+const videoReverb = new Tone.Reverb({ decay: 2, wet: 0.5 }).connect(videoBus);
+
+// Scales y tonalidades
 const scales={major:[0,2,4,5,7,9,11],minor:[0,2,3,5,7,8,10],dorian:[0,2,3,5,7,9,10],phrygian:[0,1,3,5,7,8,10],lydian:[0,2,4,6,7,9,11],mixolydian:[0,2,4,5,7,9,10],locrian:[0,1,3,5,6,8,10],harmonicMinor:[0,2,3,5,7,8,11],pentatonicMajor:[0,2,4,7,9],pentatonicMinor:[0,3,5,7,10]};
 const tonalities=["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
 let currentScale="major",currentTonality="C";
 
-// Create synth
+// Crear synth
 function createSynth(type="Synth"){
   if(synth) synth.dispose();
   synth = new Tone[type]();
-  if(effectNode){ synth.connect(effectNode); }
-  else { synth.toDestination(); }
+  if(effectNode){ synth.connect(effectNode); } else { synth.toDestination(); }
 }
 function applyEffect(type){
   if(effectNode){ effectNode.dispose(); effectNode=null; }
@@ -118,10 +121,7 @@ function applyEffect(type){
     }
     synth.disconnect();
     synth.connect(effectNode);
-  } else {
-    synth.disconnect(); 
-    synth.toDestination();
-  }
+  } else { synth.disconnect(); synth.toDestination(); }
 }
 createSynth("Synth");
 
@@ -191,27 +191,21 @@ function createPost(data){
       <button>📤 Share</button>
     </div>
   `;
-  
+
   const video=post.querySelector("video");
   const btn=post.querySelector(".video-mute-btn");
   if(video){
-    video.muted = false;
+    const mediaSource = new Tone.MediaElement(video).connect(videoReverb);
     video.play();
     let playing=true;
 
-    // Crear Gain y Reverb para normalizar y añadir efecto
-    const videoGain = new Tone.Gain(0.3).toDestination();
-    const videoReverb = new Tone.Reverb({ decay: 2, wet: 0.2 }).connect(videoGain);
-    const mediaSource = new Tone.MediaElement(video).connect(videoReverb);
-
-    video.addEventListener("click", e => {
+    video.addEventListener("click",(e)=>{
       e.stopPropagation();
-      if(playing){ video.pause(); playing=false; }
-      else { video.play(); playing=true; }
+      if(playing){ video.pause(); playing=false; } else { video.play(); playing=true; }
     });
 
     if(btn){
-      btn.addEventListener("click", e => {
+      btn.addEventListener("click",(e)=>{
         e.stopPropagation();
         video.muted = !video.muted;
         btn.textContent = video.muted ? "🔇" : "🔊";
@@ -235,61 +229,42 @@ window.addEventListener("DOMContentLoaded",()=>{
 
 // Touch input & arpeggiator & drone
 function startTouch(y,x,id){
-  if(id === "header") return;
+  if(id==="header") return;
   Tone.start();
-  if(activeTouches[id]){ activeTouches[id].y = y; activeTouches[id].x = x; }
+  if(activeTouches[id]){ activeTouches[id].y=y; activeTouches[id].x=x; }
   else { activeTouches[id]={y:y,x:x}; }
   const numTouches = Object.keys(activeTouches).length;
-  if(numTouches >= 3){
+  if(numTouches>=3){
     if(arpeggioInterval){ clearInterval(arpeggioInterval); arpeggioInterval=null; }
     if(synth) synth.triggerRelease();
     if(!droneOsc){
-      const lowestY = Math.max(...Object.values(activeTouches).map(t=>t.y));
-      const note = getNoteFromY(lowestY);
-      const synthType = document.getElementById("instrumentSelect").value;
+      const lowestY=Math.max(...Object.values(activeTouches).map(t=>t.y));
+      const note=getNoteFromY(lowestY);
+      const synthType=document.getElementById("instrumentSelect").value;
       droneOsc = new Tone[synthType]();
-      if(effectNode){ droneOsc.connect(effectNode); }
-      else { droneOsc.toDestination(); }
+      if(effectNode){ droneOsc.connect(effectNode); } else { droneOsc.toDestination(); }
       droneOsc.triggerAttack(note);
     }
     return;
   }
-  if(numTouches === 2){
+  if(numTouches===2){
     if(synth) synth.triggerRelease();
-    if(droneOsc){ droneOsc.triggerRelease(); droneOsc.dispose(); droneOsc = null; }
+    if(droneOsc){ droneOsc.triggerRelease(); droneOsc.dispose(); droneOsc=null; }
     if(!arpeggioInterval){
       const firstY=Math.min(...Object.values(activeTouches).map(t=>t.y));
       startArpeggio(firstY);
     }
     return;
   }
-  if(numTouches === 1){
+  if(numTouches===1){
     if(arpeggioInterval){ clearInterval(arpeggioInterval); arpeggioInterval=null; }
-    if(droneOsc){ droneOsc.triggerRelease(); droneOsc.dispose(); droneOsc = null; }
+    if(droneOsc){ droneOsc.triggerRelease(); droneOsc.dispose(); droneOsc=null; }
     const note=getNoteFromY(y);
     if(synth) synth.triggerAttack(note);
   }
 }
-function updateTouch(y,x,id){
-  if(activeTouches[id]){
-    const numTouches = Object.keys(activeTouches).length;
-    activeTouches[id].y = y;
-    if(numTouches === 1 && synth){
-      const note=getNoteFromY(y);
-      synth.triggerRelease();
-      synth.triggerAttack(note);
-    }
-  }
-}
-function endTouch(id){
-  if(activeTouches[id]){
-    delete activeTouches[id];
-    const numTouches = Object.keys(activeTouches).length;
-    if(numTouches === 0 && synth){ synth.triggerRelease(); }
-    if(numTouches < 2 && arpeggioInterval){ clearInterval(arpeggioInterval); arpeggioInterval=null; if(synth) synth.triggerRelease(); }
-    if(numTouches < 3 && droneOsc){ droneOsc.triggerRelease(); droneOsc.dispose(); droneOsc=null; }
-  }
-}
+function updateTouch(y,x,id){ if(activeTouches[id]){ const numTouches=Object.keys(activeTouches).length; activeTouches[id].y=y; if(numTouches===1 && synth){ const note=getNoteFromY(y); synth.setNote(note); } } }
+function endTouch(id){ if(activeTouches[id]){ delete activeTouches[id]; const numTouches=Object.keys(activeTouches).length; if(numTouches===0 && synth) synth.triggerRelease(); if(numTouches<2 && arpeggioInterval){ clearInterval(arpeggioInterval); arpeggioInterval=null; if(synth) synth.triggerRelease(); } if(numTouches<3 && droneOsc){ droneOsc.triggerRelease(); droneOsc.dispose(); droneOsc=null; } } }
 
 // Arpeggiator
 function startArpeggio(baseY){
@@ -313,7 +288,7 @@ function startArpeggio(baseY){
   let nIdx=0;
   const type=document.getElementById("arpeggioType").value;
   arpeggioInterval=setInterval(()=>{
-    if(synth){ synth.triggerAttackRelease(notes[nIdx],"8n"); }
+    if(synth) synth.triggerAttackRelease(notes[nIdx],"8n");
     if(type==="up") nIdx=(nIdx+1)%notes.length;
     else if(type==="down") nIdx=(nIdx-1+notes.length)%notes.length;
     else if(type==="random") nIdx=Math.floor(Math.random()*notes.length);
@@ -321,28 +296,28 @@ function startArpeggio(baseY){
 }
 
 // Pointer events
-window.addEventListener("mousedown",e=>{ if(!e.target.closest("header") && !e.target.closest(".dropdown")){ startTouch(e.clientY,e.clientX,"mouse"); } });
-window.addEventListener("mousemove",e=>{ if(activeTouches["mouse"]){ updateTouch(e.clientY,e.clientX,"mouse"); } });
-window.addEventListener("mouseup",e=>endTouch("mouse"));
+window.addEventListener("mousedown",e=>{ if(!e.target.closest("header") && !e.target.closest(".dropdown")) startTouch(e.clientY,e.clientX,"mouse"); });
+window.addEventListener("mousemove",e=>{ if(activeTouches["mouse"]) updateTouch(e.clientY,e.clientX,"mouse"); });
+window.addEventListener("mouseup",()=>endTouch("mouse"));
 window.addEventListener("touchstart",e=>{
   if(!e.target.closest("header") && !e.target.closest(".dropdown")){
-    for(const t of e.touches){ startTouch(t.clientY,t.clientX,t.identifier); }
+    for(const t of e.touches) startTouch(t.clientY,t.clientX,t.identifier);
   }
 });
 window.addEventListener("touchmove",e=>{
-  if(Object.keys(activeTouches).length > 0){
-    for(const t of e.touches){ updateTouch(t.clientY,t.clientX,t.identifier); }
-    if(e.touches.length === 2){ e.preventDefault(); } // Prevent pinch zoom
+  if(Object.keys(activeTouches).length>0){
+    for(const t of e.touches) updateTouch(t.clientY,t.clientX,t.identifier);
+    if(e.touches.length===2) e.preventDefault();
   }
 },{passive:false});
 window.addEventListener("touchend",e=>{
-  if(Object.keys(activeTouches).length > 0){
-    for(const t of e.changedTouches){ endTouch(t.identifier); }
+  if(Object.keys(activeTouches).length>0){
+    for(const t of e.changedTouches) endTouch(t.identifier);
   }
 });
 
 // Menu toggle
-document.querySelector(".menu-icon").addEventListener("click",(e)=>{
+document.querySelector(".menu-icon").addEventListener("click",e=>{
   e.stopPropagation();
   const d=document.querySelector(".dropdown");
   d.style.display=(d.style.display==="flex")?"none":"flex";
